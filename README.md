@@ -1,50 +1,48 @@
 # Cupeer — cupid for your career
 
-Cupeer, CV'ni analiz edip 7 farklı iş platformundan (LinkedIn, Indeed, Upwork,
-Kariyer.net, Eleman.net, Glassdoor, RemoteOK) topladığı güncel ilanları sana
-en uygun olacak şekilde sıralayan, kişisel kullanım için geliştirilmiş
-uçtan uca bir iş öneri sistemi.
+Cupeer is a personal, end-to-end job recommendation system: upload your CV
+and it ranks fresh listings pulled from 7 different job platforms (LinkedIn,
+Indeed, Upwork, Kariyer.net, Eleman.net, Glassdoor, RemoteOK) by how well
+they match you.
 
-CV'ni yükle, Cupeer sana en uygun ilanları bulsun ve dilersen ilana özel bir
-ön yazıyı da senin için yazsın.
+Upload your CV, let Cupeer find the jobs that fit you best, and optionally
+have it write a tailored cover letter for any listing you pick.
 
 ![Cupeer mascot](frontend/assets/cupeer.png)
 
-## Özellikler
+## Features
 
-- **7 platformdan tek seferde tarama** — Apify Actor'ları üzerinden LinkedIn,
-  Indeed, Upwork, Kariyer.net, Eleman.net, Glassdoor ve RemoteOK'tan ilan
-  toplar.
-- **Anlamsal eşleştirme** — CV metnini ve ilanları çok dilli (TR/EN) bir
-  embedding modeliyle karşılaştırıp anlam bazlı sıralar; sadece anahtar
-  kelime eşleşmesine bakmaz.
-- **Ülkeye göre filtreleme** — her ilan, hangi ülke için tarandıysa o ülke
-  koduyla etiketlenir; "Türkiye", "ABD" gibi bir filtre seçtiğinde yalnızca
-  o ülkedeki ilanlar gösterilir.
-- **Güncellik takibi** — süresi dolmuş ya da eski ilanlar (kaynağın kendi
-  bilgisine ve ilan tarihine göre) otomatik olarak elenir.
-- **AI destekli ön yazı** — seçtiğin bir ilan için CV'ne ve ilan metnine göre
-  kişiselleştirilmiş bir ön yazı üretir, PDF olarak indirebilirsin.
-- **Tamamen yerel çalışır** — verilerin kendi bilgisayarında kalır; harici
-  bağımlılık sadece tarama (Apify) ve ön yazı üretimi (Gemini) için
-  kullanılır.
+- **Scrape 7 platforms at once** — pulls listings from LinkedIn, Indeed,
+  Upwork, Kariyer.net, Eleman.net, Glassdoor and RemoteOK via Apify Actors.
+- **Semantic matching** — compares your CV and each listing with a
+  multilingual (TR/EN) embedding model and ranks by meaning, not just
+  keyword overlap.
+- **Country-aware filtering** — every listing is tagged with the country it
+  was scraped for, so filtering by "Turkey" or "USA" only shows jobs from
+  that country.
+- **Freshness tracking** — expired or stale listings (based on the source's
+  own signal and the posting date) are automatically filtered out.
+- **AI-generated cover letters** — writes a cover letter tailored to your CV
+  and a chosen listing, downloadable as a PDF.
+- **Runs locally** — your data stays on your machine; the only external
+  dependencies are scraping (Apify) and cover letter generation (Gemini).
 
-## Teknoloji yığını
+## Tech stack
 
-| Katman | Teknoloji |
+| Layer | Technology |
 |---|---|
 | Backend | FastAPI, Pydantic |
-| Tarama | Apify Python SDK |
-| Öneri modeli | sentence-transformers (çok dilli embedding) |
-| Depolama | SQLite |
-| Ön yazı üretimi | Google Gemini API |
-| PDF üretimi | fpdf2 |
-| Frontend | Statik HTML/CSS/JS (FastAPI `StaticFiles` üzerinden aynı origin'den servis edilir) |
+| Scraping | Apify Python SDK |
+| Recommendation model | sentence-transformers (multilingual embeddings) |
+| Storage | SQLite |
+| Cover letter generation | Google Gemini API |
+| PDF generation | fpdf2 |
+| Frontend | Static HTML/CSS/JS (served from the same origin via FastAPI `StaticFiles`) |
 
-## Kurulum
+## Setup
 
 ```bash
-git clone <bu-repo>
+git clone https://github.com/gizemyalcinn/cupeer.git
 cd cupeer
 python -m venv venv
 venv\Scripts\activate        # Windows
@@ -53,57 +51,56 @@ venv\Scripts\activate        # Windows
 pip install -r requirements.txt
 ```
 
-`.env.example` dosyasını `.env` olarak kopyala ve kendi API anahtarlarını gir:
+Copy `.env.example` to `.env` and fill in your own API keys:
 
 ```bash
 cp .env.example .env
 ```
 
 ```
-APIFY_API_TOKEN=...   # https://console.apify.com adresinden alınır
-GEMINI_API_KEY=...    # https://aistudio.google.com adresinden alınır
+APIFY_API_TOKEN=...   # from https://console.apify.com
+GEMINI_API_KEY=...    # from https://aistudio.google.com
 ```
 
-## Çalıştırma
+## Running
 
 ```bash
 uvicorn src.api.main:app --reload
 ```
 
-Sonra tarayıcıda `http://127.0.0.1:8000` adresini aç. Frontend, backend ile
-aynı origin'den servis edildiği için ayrı bir sunucu kurmana gerek yok.
+Then open `http://127.0.0.1:8000` in your browser. The frontend is served
+from the same origin as the backend, so there's no separate server to set up.
 
-## Testler
+## Tests
 
-Dış servislere (Apify, Gemini) bağlı olmayan, tamamen yerel/ücretsiz birim
-testleri `tests/` klasöründe:
+Unit tests that don't depend on any external service (Apify, Gemini) —
+fully local and free — live in `tests/`:
 
 ```bash
 pytest
 ```
 
-`scripts/manual/` klasöründeki dosyalar otomatik test değildir — geliştirme
-sırasında tek tek platformları elle doğrulamak için yazılmış scriptlerdir ve
-çalıştırıldıklarında gerçek (ücretli) API isteği atarlar. Bilerek ve
-farkında olarak çalıştırılmalıdır.
+Files under `scripts/manual/` are not automated tests — they're scripts
+written during development to manually verify individual platforms, and they
+make real (paid) API requests when run. Run them intentionally, not as part
+of any test suite.
 
-## Maliyet notu
+## A note on cost
 
-Apify ve Gemini'nin ücretsiz katmanları vardır ancak sınırlıdır. Bu proje her
-ikisini de yalnızca gerektiğinde, düşük `max_items` değerleriyle çağıracak
-şekilde tasarlandı; yine de kendi API anahtarınla kullanırken kullanım/kota
-sayfalarını takip etmen önerilir.
+Apify and Gemini both offer free tiers, but they're limited. This project
+calls both only when needed, with low `max_items` values by default — still,
+keep an eye on your own usage/quota pages when using your own API keys.
 
-## Proje yapısı
+## Project structure
 
 ```
 src/
-  api/            FastAPI uçları
-  scraping/       Platform bazlı scraper'lar + ülke tespiti
-  preprocessing/  Ortak Job şeması, temizleme/dedupe
-  model/          Embedding, öneri, güncellik, ön yazı üretimi
-  db/             SQLite depolama katmanı
-frontend/         Statik HTML/CSS/JS arayüz
-tests/            Otomatik pytest testleri
-scripts/manual/   Geliştirme sırasında kullanılan manuel debug scriptleri
+  api/            FastAPI endpoints
+  scraping/       Per-platform scrapers + country detection
+  preprocessing/  Shared Job schema, cleaning/deduping
+  model/          Embeddings, recommendation, freshness, cover letters
+  db/             SQLite storage layer
+frontend/         Static HTML/CSS/JS UI
+tests/            Automated pytest tests
+scripts/manual/   Manual debug scripts used during development
 ```
