@@ -8,7 +8,9 @@ they match you.
 Upload your CV, let Cupeer find the jobs that fit you best, and optionally
 have it write a tailored cover letter for any listing you pick.
 
-![Cupeer mascot](frontend/assets/cupeer.png)
+![Cupeer homepage](frontend/assets/screenshot-hero.png)
+
+![How it works](frontend/assets/screenshot-how-it-works.png)
 
 ## Features
 
