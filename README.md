@@ -12,6 +12,8 @@ have it write a tailored cover letter for any listing you pick.
 
 ![How it works](frontend/assets/screenshot-how-it-works.png)
 
+![Ranked results for a Full Stack Developer CV](frontend/assets/screenshot-results.png)
+
 ## Features
 
 - **Scrape 7 platforms at once** — pulls listings from LinkedIn, Indeed,
@@ -85,7 +87,10 @@ pytest
 Files under `scripts/manual/` are not automated tests — they're scripts
 written during development to manually verify individual platforms, and they
 make real (paid) API requests when run. Run them intentionally, not as part
-of any test suite.
+of any test suite. The exception is `seed_demo_jobs.py`, which inserts a
+handful of realistic sample listings straight into the local database — no
+API calls, useful for trying out the "Öner" flow without spending Apify
+credits.
 
 ## A note on cost
 
