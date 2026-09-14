@@ -1,0 +1,12 @@
+apify-client
+pydantic
+beautifulsoup4
+sentence-transformers
+numpy
+fastapi
+uvicorn
+python-dotenv
+pytest
+pdfplumber
+google-genai
+fpdf2
