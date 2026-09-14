@@ -1,0 +1,16 @@
+# Environment
+venv/
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Data (generated at runtime, not source)
+data/*.db
+
+# Misc
+.DS_Store
+*.log
