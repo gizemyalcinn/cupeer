@@ -1,5 +1,18 @@
 const API_URL = "http://127.0.0.1:8000";
 
+const SOURCE_LABELS = {
+  linkedin: "LinkedIn",
+  indeed: "Indeed",
+  upwork: "Upwork",
+  kariyer: "Kariyer.net",
+  eleman: "Eleman.net",
+  glassdoor: "Glassdoor",
+  remoteok: "RemoteOK",
+};
+
+const HEART_ICON =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg>';
+
 // --- Kaydırınca beliren (scroll reveal) efekt ---
 const revealElements = document.querySelectorAll(".reveal");
 
@@ -73,6 +86,99 @@ refreshBtn.addEventListener("click", async () => {
   refreshBtn.disabled = false;
 });
 
+// --- Favoriler: paylaşılan durum ---
+const favoriteIds = new Set();
+let favJobs = [];
+const favoritesList = document.getElementById("favorites-list");
+
+async function loadFavorites() {
+  try {
+    const response = await fetch(`${API_URL}/favorites`);
+    favJobs = await response.json();
+    favoriteIds.clear();
+    favJobs.forEach((job) => favoriteIds.add(job.id));
+    renderFavorites();
+  } catch (err) {
+    // Sunucu henüz hazır olmayabilir, sessizce geç.
+  }
+}
+
+async function toggleFavorite(jobId, makeFavorite) {
+  try {
+    await fetch(`${API_URL}/favorite`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ job_id: jobId, favorite: makeFavorite }),
+    });
+  } catch (err) {
+    // Ağ hatası olsa da yerel durumu güncellemeye devam ediyoruz.
+  }
+
+  if (makeFavorite) {
+    favoriteIds.add(jobId);
+    const job = lastJobs.find((j) => j.id === jobId) || favJobs.find((j) => j.id === jobId);
+    if (job && !favJobs.some((j) => j.id === jobId)) {
+      favJobs = [{ ...job }, ...favJobs];
+    }
+  } else {
+    favoriteIds.delete(jobId);
+    favJobs = favJobs.filter((j) => j.id !== jobId);
+  }
+
+  syncFavoriteButtons();
+  renderFavorites();
+}
+
+function syncFavoriteButtons() {
+  document.querySelectorAll(".favorite-btn").forEach((btn) => {
+    const isFav = favoriteIds.has(btn.dataset.jobId);
+    btn.classList.toggle("is-favorite", isFav);
+    btn.setAttribute("aria-pressed", isFav ? "true" : "false");
+  });
+}
+
+function renderFavorites() {
+  if (favJobs.length === 0) {
+    favoritesList.innerHTML =
+      '<p class="empty-state">Henüz favori ilanın yok. Sonuçlardaki kalp ikonuna basarak ekleyebilirsin.</p>';
+    return;
+  }
+  favoritesList.innerHTML = favJobs.map((job) => jobCardHtml(job, { showScore: false })).join("");
+}
+
+// --- Ortak ilan kartı şablonu ---
+function jobCardHtml(job, { index, showScore = true } = {}) {
+  const isFav = favoriteIds.has(job.id);
+  const scoreHtml =
+    showScore && typeof job.score === "number"
+      ? `<span class="job-score">Uyum: %${Math.round(job.score * 100)}</span>`
+      : "";
+  const coverLetterBtn =
+    index !== undefined
+      ? `<button class="cover-letter-btn" data-index="${index}">Ön Yazı Oluştur</button>`
+      : "";
+  const coverLetterOutput = index !== undefined ? `<div class="cover-letter-output" id="cover-letter-${index}"></div>` : "";
+
+  return `
+    <div class="job-card" data-job-id="${job.id}">
+      <div class="job-top-row">
+        <span class="job-title">${job.title}</span>
+        <span class="job-tag">${SOURCE_LABELS[job.source] || job.source}</span>
+        <button type="button" class="favorite-btn ${isFav ? "is-favorite" : ""}" data-job-id="${job.id}" aria-pressed="${isFav ? "true" : "false"}" aria-label="Favorilere ekle/çıkar" title="Favorilere ekle/çıkar">
+          ${HEART_ICON}
+        </button>
+      </div>
+      <div class="job-meta">${job.company || "Bilinmiyor"} · ${job.location || "Belirtilmemiş"}</div>
+      <div class="job-bottom-row">
+        ${scoreHtml}
+        <a href="${job.url}" target="_blank" class="job-link">İlana git →</a>
+        ${coverLetterBtn}
+      </div>
+      ${coverLetterOutput}
+    </div>
+  `;
+}
+
 // --- "Öner" butonu: uygun ilanları getir ---
 const recommendBtn = document.getElementById("recommend-btn");
 const resultsList = document.getElementById("results-list");
@@ -117,23 +223,7 @@ function renderResults() {
   const visibleJobs = lastJobs.slice(0, visibleCount);
 
   const cardsHtml = visibleJobs
-    .map(
-      (job, index) => `
-      <div class="job-card">
-        <div class="job-top-row">
-          <span class="job-title">${job.title}</span>
-          <span class="job-tag">${job.source}</span>
-        </div>
-        <div class="job-meta">${job.company || "Bilinmiyor"} · ${job.location || "Belirtilmemiş"}</div>
-        <div class="job-bottom-row">
-          <span class="job-score">Uyum: %${Math.round(job.score * 100)}</span>
-          <a href="${job.url}" target="_blank" class="job-link">İlana git →</a>
-          <button class="cover-letter-btn" data-index="${index}">Ön Yazı Oluştur</button>
-        </div>
-        <div class="cover-letter-output" id="cover-letter-${index}"></div>
-      </div>
-    `,
-    )
+    .map((job, index) => jobCardHtml(job, { index, showScore: true }))
     .join("");
 
   const remaining = lastJobs.length - visibleCount;
@@ -145,8 +235,16 @@ function renderResults() {
   resultsList.innerHTML = cardsHtml + loadMoreHtml;
 }
 
-// --- "Ön Yazı Oluştur" / "PDF Olarak İndir" / "Daha Fazla Göster" butonları ---
-resultsList.addEventListener("click", async (e) => {
+// --- "Ön Yazı Oluştur" / "PDF Olarak İndir" / "Daha Fazla Göster" / favori butonları ---
+async function handleListClick(e) {
+  const favoriteBtn = e.target.closest(".favorite-btn");
+  if (favoriteBtn) {
+    const jobId = favoriteBtn.dataset.jobId;
+    const makeFavorite = !favoriteIds.has(jobId);
+    toggleFavorite(jobId, makeFavorite);
+    return;
+  }
+
   if (e.target.id === "load-more-btn") {
     visibleCount += PAGE_SIZE;
     renderResults();
@@ -234,4 +332,9 @@ resultsList.addEventListener("click", async (e) => {
     e.target.disabled = false;
     e.target.textContent = "PDF Olarak İndir";
   }
-});
+}
+
+resultsList.addEventListener("click", handleListClick);
+favoritesList.addEventListener("click", handleListClick);
+
+loadFavorites();

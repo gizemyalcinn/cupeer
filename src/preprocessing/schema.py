@@ -17,3 +17,4 @@ class Job(BaseModel):
     salary: str | None = None
     posted_date: str | None = None
     scraped_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    is_favorite: bool = False

@@ -12,6 +12,7 @@ import io
 from src.pipeline import refresh_jobs
 from src.model.recommender import recommend_jobs
 from src.model.cover_letter import generate_cover_letter, guess_file_name
+from src.db.storage import set_favorite, get_favorite_jobs
 
 app = FastAPI()
 
@@ -43,6 +44,11 @@ class CoverLetterPdfRequest(BaseModel):
     file_name: str = "on_yazi"
 
 
+class FavoriteRequest(BaseModel):
+    job_id: str
+    favorite: bool
+
+
 @app.post("/refresh")
 def refresh(req: RefreshRequest):
     inserted = refresh_jobs(req.keywords, req.location, req.max_items_per_source)
@@ -54,6 +60,7 @@ def recommend(req: RecommendRequest):
     results = recommend_jobs(req.profile_text, req.top_n, req.include_expired, req.location)
     return [
         {
+            "id": job.id,
             "title": job.title,
             "company": job.company,
             "location": job.location,
@@ -61,8 +68,33 @@ def recommend(req: RecommendRequest):
             "url": job.url,
             "source": job.source,
             "score": score,
+            "is_favorite": job.is_favorite,
         }
         for job, score in results
+    ]
+
+
+@app.post("/favorite")
+def favorite(req: FavoriteRequest):
+    found = set_favorite(req.job_id, req.favorite)
+    return {"ok": found}
+
+
+@app.get("/favorites")
+def favorites():
+    jobs = get_favorite_jobs()
+    return [
+        {
+            "id": job.id,
+            "title": job.title,
+            "company": job.company,
+            "location": job.location,
+            "description": job.description,
+            "url": job.url,
+            "source": job.source,
+            "is_favorite": job.is_favorite,
+        }
+        for job in jobs
     ]
 
 

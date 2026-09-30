@@ -503,14 +503,16 @@ textarea {
 }
 .job-top-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 8px 12px;
   margin-bottom: 4px;
 }
 .job-title {
   font-family: "Fredoka", sans-serif;
   font-weight: 600;
   font-size: 1rem;
+  flex: 1;
 }
 .job-tag {
   font-size: 0.7rem;
@@ -519,6 +521,41 @@ textarea {
   border-radius: 100px;
   background: var(--bg-alt);
   color: var(--primary-dark);
+  flex-shrink: 0;
+}
+.favorite-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 50%;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease,
+    transform 0.15s ease;
+}
+.favorite-btn:hover {
+  background: var(--bg-alt);
+  color: var(--primary);
+}
+.favorite-btn.is-favorite {
+  color: var(--primary);
+}
+.favorite-btn.is-favorite svg {
+  fill: var(--primary);
+}
+.favorite-btn:active {
+  transform: scale(0.88);
+}
+.empty-state {
+  color: var(--text-secondary);
+  text-align: center;
 }
 .job-meta {
   color: var(--text-secondary);
@@ -527,7 +564,9 @@ textarea {
 }
 .job-bottom-row {
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
   font-size: 0.8rem;
 }
 .job-score {

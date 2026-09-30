@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     posted_date TEXT,
     scraped_at TEXT,
     is_expired INTEGER,
+    is_favorite INTEGER DEFAULT 0,
     title_embedding BLOB,
     content_embedding BLOB
 );
@@ -32,6 +33,10 @@ def _connect() -> sqlite3.Connection:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.execute(_SCHEMA)
+    # jobs.db created before is_favorite existed won't have the column yet.
+    existing_columns = {row[1] for row in conn.execute("PRAGMA table_info(jobs)")}
+    if "is_favorite" not in existing_columns:
+        conn.execute("ALTER TABLE jobs ADD COLUMN is_favorite INTEGER DEFAULT 0")
     return conn
 
 
@@ -50,13 +55,16 @@ def save_new_jobs(jobs: list[Job], title_vectors: np.ndarray, content_vectors: n
         if job.id in existing_ids:
             continue
         conn.execute(
-            "INSERT INTO jobs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO jobs (id, source, title, company, location, country, description, url, "
+            "remote, employment_type, salary, posted_date, scraped_at, is_expired, is_favorite, "
+            "title_embedding, content_embedding) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (
                 job.id, job.source, job.title, job.company, job.location, job.country,
                 job.description, job.url,
                 int(job.remote) if job.remote is not None else None,
                 job.employment_type, job.salary, job.posted_date, job.scraped_at,
                 int(job.is_expired) if job.is_expired is not None else None,
+                int(job.is_favorite),
                 title_vec.astype(np.float32).tobytes(),
                 content_vec.astype(np.float32).tobytes(),
             ),
@@ -67,11 +75,46 @@ def save_new_jobs(jobs: list[Job], title_vectors: np.ndarray, content_vectors: n
     return inserted
 
 
+def set_favorite(job_id: str, favorite: bool) -> bool:
+    """Returns True if a matching job was found and updated."""
+    conn = _connect()
+    cursor = conn.execute(
+        "UPDATE jobs SET is_favorite = ? WHERE id = ?", (int(favorite), job_id)
+    )
+    conn.commit()
+    updated = cursor.rowcount > 0
+    conn.close()
+    return updated
+
+
+def get_favorite_jobs() -> list[Job]:
+    conn = _connect()
+    rows = conn.execute(
+        "SELECT id, source, title, company, location, country, description, url, "
+        "remote, employment_type, salary, posted_date, scraped_at, is_expired, is_favorite "
+        "FROM jobs WHERE is_favorite = 1 ORDER BY scraped_at DESC"
+    ).fetchall()
+    conn.close()
+    return [_row_to_job(row) for row in rows]
+
+
+def _row_to_job(row) -> Job:
+    return Job(
+        id=row[0], source=row[1], title=row[2], company=row[3], location=row[4],
+        country=row[5],
+        description=row[6], url=row[7],
+        remote=bool(row[8]) if row[8] is not None else None,
+        employment_type=row[9], salary=row[10], posted_date=row[11], scraped_at=row[12],
+        is_expired=bool(row[13]) if row[13] is not None else None,
+        is_favorite=bool(row[14]),
+    )
+
+
 def load_all_jobs() -> tuple[list[Job], np.ndarray, np.ndarray]:
     conn = _connect()
     rows = conn.execute(
         "SELECT id, source, title, company, location, country, description, url, "
-        "remote, employment_type, salary, posted_date, scraped_at, is_expired, "
+        "remote, employment_type, salary, posted_date, scraped_at, is_expired, is_favorite, "
         "title_embedding, content_embedding FROM jobs"
     ).fetchall()
     conn.close()
@@ -80,16 +123,9 @@ def load_all_jobs() -> tuple[list[Job], np.ndarray, np.ndarray]:
     title_vectors = []
     content_vectors = []
     for row in rows:
-        jobs.append(Job(
-            id=row[0], source=row[1], title=row[2], company=row[3], location=row[4],
-            country=row[5],
-            description=row[6], url=row[7],
-            remote=bool(row[8]) if row[8] is not None else None,
-            employment_type=row[9], salary=row[10], posted_date=row[11], scraped_at=row[12],
-            is_expired=bool(row[13]) if row[13] is not None else None,
-        ))
-        title_vectors.append(np.frombuffer(row[14], dtype=np.float32))
-        content_vectors.append(np.frombuffer(row[15], dtype=np.float32))
+        jobs.append(_row_to_job(row[:15]))
+        title_vectors.append(np.frombuffer(row[15], dtype=np.float32))
+        content_vectors.append(np.frombuffer(row[16], dtype=np.float32))
 
     title_embeddings = np.stack(title_vectors) if title_vectors else np.empty((0, 0), dtype=np.float32)
     content_embeddings = np.stack(content_vectors) if content_vectors else np.empty((0, 0), dtype=np.float32)
