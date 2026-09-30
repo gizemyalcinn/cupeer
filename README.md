@@ -28,6 +28,9 @@ have it write a tailored cover letter for any listing you pick.
   own signal and the posting date) are automatically filtered out.
 - **AI-generated cover letters** — writes a cover letter tailored to your CV
   and a chosen listing, downloadable as a PDF.
+- **Optional accounts** — sign up with email/password or Google to save
+  favorite listings across visits; browsing and getting recommendations
+  works fine without an account too.
 - **Runs locally** — your data stays on your machine; the only external
   dependencies are scraping (Apify) and cover letter generation (Gemini).
 
@@ -41,6 +44,7 @@ have it write a tailored cover letter for any listing you pick.
 | Storage | SQLite |
 | Cover letter generation | Google Gemini API |
 | PDF generation | fpdf2 |
+| Auth | Session cookies (Starlette `SessionMiddleware`) + bcrypt, Google OAuth via Authlib |
 | Frontend | Static HTML/CSS/JS (served from the same origin via FastAPI `StaticFiles`) |
 
 ## Setup
@@ -62,9 +66,20 @@ cp .env.example .env
 ```
 
 ```
-APIFY_API_TOKEN=...   # from https://console.apify.com
-GEMINI_API_KEY=...    # from https://aistudio.google.com
+APIFY_API_TOKEN=...      # from https://console.apify.com
+GEMINI_API_KEY=...       # from https://aistudio.google.com
+SESSION_SECRET_KEY=...   # any random string, e.g. `python -c "import secrets; print(secrets.token_hex(32))"`
+GOOGLE_CLIENT_ID=...     # optional, see below
+GOOGLE_CLIENT_SECRET=... # optional, see below
 ```
+
+Email/password accounts work out of the box once `SESSION_SECRET_KEY` is set.
+"Sign in with Google" is optional — without `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`
+that button just returns an error, everything else still works. To enable it:
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/apis/credentials) and create an OAuth 2.0 Client ID (application type: Web application).
+2. Add `http://127.0.0.1:8000/auth/google/callback` as an authorized redirect URI (adjust the domain for production).
+3. Copy the generated Client ID and Client Secret into `.env`.
 
 ## Running
 
@@ -103,8 +118,9 @@ keep an eye on your own usage/quota pages when using your own API keys.
 ```
 src/
   api/            FastAPI endpoints
+  auth/           Password hashing, sessions, Google OAuth
   scraping/       Per-platform scrapers + country detection
-  preprocessing/  Shared Job schema, cleaning/deduping
+  preprocessing/  Shared Job/User schemas, cleaning/deduping
   model/          Embeddings, recommendation, freshness, cover letters
   db/             SQLite storage layer
 frontend/         Static HTML/CSS/JS UI

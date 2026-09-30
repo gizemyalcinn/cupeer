@@ -13,6 +13,160 @@ const SOURCE_LABELS = {
 const HEART_ICON =
   '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg>';
 
+// --- Toast bildirimi ---
+const toastEl = document.getElementById("toast");
+let toastTimeout;
+
+function showToast(message, duration = 2500) {
+  clearTimeout(toastTimeout);
+  toastEl.textContent = message;
+  toastEl.classList.remove("hidden-field");
+  void toastEl.offsetWidth; // reflow, geçiş animasyonunun çalışması için
+  toastEl.classList.add("is-visible");
+
+  toastTimeout = setTimeout(() => {
+    toastEl.classList.remove("is-visible");
+    setTimeout(() => toastEl.classList.add("hidden-field"), 250);
+  }, duration);
+}
+
+// --- Kullanıcı oturumu ---
+let currentUser = null;
+
+const authModal = document.getElementById("auth-modal");
+const authOpenBtn = document.getElementById("auth-open-btn");
+const authModalClose = document.getElementById("auth-modal-close");
+const userMenu = document.getElementById("user-menu");
+const userNameLabel = document.getElementById("user-name-label");
+const logoutBtn = document.getElementById("logout-btn");
+const loginForm = document.getElementById("login-form");
+const registerForm = document.getElementById("register-form");
+const loginError = document.getElementById("login-error");
+const registerError = document.getElementById("register-error");
+
+function openAuthModal() {
+  loginForm.reset();
+  registerForm.reset();
+  authModal.classList.remove("hidden-field");
+}
+function closeAuthModal() {
+  authModal.classList.add("hidden-field");
+  loginForm.reset();
+  registerForm.reset();
+  loginError.textContent = "";
+  registerError.textContent = "";
+}
+
+authOpenBtn.addEventListener("click", openAuthModal);
+authModalClose.addEventListener("click", closeAuthModal);
+authModal.addEventListener("click", (e) => {
+  if (e.target === authModal) closeAuthModal();
+});
+
+document.querySelectorAll(".auth-tab").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".auth-tab").forEach((t) => t.classList.remove("is-active"));
+    tab.classList.add("is-active");
+    const isLogin = tab.dataset.tab === "login";
+    loginForm.classList.toggle("hidden-field", !isLogin);
+    registerForm.classList.toggle("hidden-field", isLogin);
+  });
+});
+
+function updateAuthUI() {
+  if (currentUser) {
+    authOpenBtn.classList.add("hidden-field");
+    userMenu.classList.remove("hidden-field");
+    userNameLabel.textContent = currentUser.name || currentUser.email;
+  } else {
+    authOpenBtn.classList.remove("hidden-field");
+    userMenu.classList.add("hidden-field");
+  }
+}
+
+async function loadCurrentUser() {
+  try {
+    const response = await fetch(`${API_URL}/auth/me`, { credentials: "include" });
+    const data = await response.json();
+    currentUser = data.logged_in ? data : null;
+  } catch (err) {
+    currentUser = null;
+  }
+  updateAuthUI();
+}
+
+loginForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  loginError.textContent = "";
+  const email = document.getElementById("login-email").value;
+  const password = document.getElementById("login-password").value;
+
+  try {
+    const response = await fetch(`${API_URL}/auth/login`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      loginError.textContent = data.detail || "Giriş yapılamadı.";
+      return;
+    }
+    currentUser = data;
+    updateAuthUI();
+    closeAuthModal();
+    loadFavorites();
+    showToast(`Tekrar hoş geldin, ${currentUser.name || currentUser.email}!`);
+  } catch (err) {
+    loginError.textContent = "Bir hata oluştu, sunucuyu kontrol et.";
+  }
+});
+
+registerForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  registerError.textContent = "";
+  const name = document.getElementById("register-name").value;
+  const email = document.getElementById("register-email").value;
+  const password = document.getElementById("register-password").value;
+
+  try {
+    const response = await fetch(`${API_URL}/auth/register`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, password }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      registerError.textContent = data.detail || "Kayıt oluşturulamadı.";
+      return;
+    }
+    currentUser = data;
+    updateAuthUI();
+    closeAuthModal();
+    loadFavorites();
+    showToast(`Hoş geldin, ${currentUser.name || currentUser.email}!`);
+  } catch (err) {
+    registerError.textContent = "Bir hata oluştu, sunucuyu kontrol et.";
+  }
+});
+
+logoutBtn.addEventListener("click", async () => {
+  try {
+    await fetch(`${API_URL}/auth/logout`, { method: "POST", credentials: "include" });
+  } catch (err) {
+    // yok say
+  }
+  currentUser = null;
+  favJobs = [];
+  favoriteIds.clear();
+  updateAuthUI();
+  renderFavorites();
+  syncFavoriteButtons();
+  showToast("Çıkış yaptınız.");
+});
+
 // --- Kaydırınca beliren (scroll reveal) efekt ---
 const revealElements = document.querySelectorAll(".reveal");
 
@@ -138,6 +292,11 @@ function syncFavoriteButtons() {
 }
 
 function renderFavorites() {
+  if (!currentUser) {
+    favoritesList.innerHTML =
+      '<p class="empty-state">Favorilerini kaydetmek için giriş yapmalısın.</p>';
+    return;
+  }
   if (favJobs.length === 0) {
     favoritesList.innerHTML =
       '<p class="empty-state">Henüz favori ilanın yok. Sonuçlardaki kalp ikonuna basarak ekleyebilirsin.</p>';
@@ -239,6 +398,10 @@ function renderResults() {
 async function handleListClick(e) {
   const favoriteBtn = e.target.closest(".favorite-btn");
   if (favoriteBtn) {
+    if (!currentUser) {
+      openAuthModal();
+      return;
+    }
     const jobId = favoriteBtn.dataset.jobId;
     const makeFavorite = !favoriteIds.has(jobId);
     toggleFavorite(jobId, makeFavorite);
@@ -337,4 +500,10 @@ async function handleListClick(e) {
 resultsList.addEventListener("click", handleListClick);
 favoritesList.addEventListener("click", handleListClick);
 
-loadFavorites();
+loadCurrentUser().then(() => {
+  if (currentUser) {
+    loadFavorites();
+  } else {
+    renderFavorites();
+  }
+});

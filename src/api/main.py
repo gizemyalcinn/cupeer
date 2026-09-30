@@ -1,8 +1,14 @@
+import os
 from datetime import datetime
 from urllib.parse import quote
 
-from fastapi import FastAPI, UploadFile, File, Response
+from dotenv import load_dotenv
+
+load_dotenv()
+
+from fastapi import FastAPI, UploadFile, File, Response, Depends, HTTPException
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
 from pydantic import BaseModel
 from fpdf import FPDF
 from fpdf.enums import XPos, YPos
@@ -12,9 +18,19 @@ import io
 from src.pipeline import refresh_jobs
 from src.model.recommender import recommend_jobs
 from src.model.cover_letter import generate_cover_letter, guess_file_name
-from src.db.storage import set_favorite, get_favorite_jobs
+from src.db.storage import add_favorite, remove_favorite, get_favorite_jobs, get_favorite_ids
+from src.preprocessing.schema import User
+from src.auth.security import get_current_user
+from src.auth.routes import router as auth_router
 
 app = FastAPI()
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("SESSION_SECRET_KEY", "dev-insecure-secret-change-me"),
+    max_age=60 * 60 * 24 * 30,
+    same_site="lax",
+)
+app.include_router(auth_router)
 
 
 class RefreshRequest(BaseModel):
@@ -56,8 +72,9 @@ def refresh(req: RefreshRequest):
 
 
 @app.post("/recommend")
-def recommend(req: RecommendRequest):
+def recommend(req: RecommendRequest, user: User | None = Depends(get_current_user)):
     results = recommend_jobs(req.profile_text, req.top_n, req.include_expired, req.location)
+    favorite_ids = get_favorite_ids(user.id) if user else set()
     return [
         {
             "id": job.id,
@@ -68,21 +85,28 @@ def recommend(req: RecommendRequest):
             "url": job.url,
             "source": job.source,
             "score": score,
-            "is_favorite": job.is_favorite,
+            "is_favorite": job.id in favorite_ids,
         }
         for job, score in results
     ]
 
 
 @app.post("/favorite")
-def favorite(req: FavoriteRequest):
-    found = set_favorite(req.job_id, req.favorite)
-    return {"ok": found}
+def favorite(req: FavoriteRequest, user: User | None = Depends(get_current_user)):
+    if not user:
+        raise HTTPException(401, "Favorilemek için giriş yapmalısın.")
+    if req.favorite:
+        add_favorite(user.id, req.job_id)
+    else:
+        remove_favorite(user.id, req.job_id)
+    return {"ok": True}
 
 
 @app.get("/favorites")
-def favorites():
-    jobs = get_favorite_jobs()
+def favorites(user: User | None = Depends(get_current_user)):
+    if not user:
+        return []
+    jobs = get_favorite_jobs(user.id)
     return [
         {
             "id": job.id,

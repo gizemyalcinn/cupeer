@@ -17,4 +17,13 @@ class Job(BaseModel):
     salary: str | None = None
     posted_date: str | None = None
     scraped_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
-    is_favorite: bool = False
+    is_favorite: bool = False  # kalıcı değil, kullanıcıya göre her istekte hesaplanır
+
+
+class User(BaseModel):
+    id: str
+    email: str | None = None
+    name: str | None = None
+    password_hash: str | None = None  # Google ile kayıt olduysa None
+    google_id: str | None = None
+    created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())

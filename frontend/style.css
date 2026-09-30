@@ -152,6 +152,129 @@ a {
 .nav-links a:hover {
   color: var(--primary-dark);
 }
+.nav-auth {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.user-menu {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.user-menu span {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+/* ---------- Giriş / Kayıt modalı ---------- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(58, 46, 59, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.modal-card {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 52px 32px 32px;
+  box-shadow: 0 20px 60px rgba(58, 46, 59, 0.25);
+}
+.modal-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+}
+.modal-close:hover {
+  background: var(--bg-alt);
+}
+.auth-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  background: var(--bg-alt);
+  border-radius: 100px;
+  padding: 4px;
+}
+.auth-tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px 12px;
+  border-radius: 100px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+.auth-tab.is-active {
+  background: var(--surface);
+  color: var(--primary-dark);
+}
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.auth-form label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 10px;
+}
+.auth-form input {
+  width: 100%;
+}
+.auth-form button[type="submit"] {
+  margin-top: 18px;
+  width: 100%;
+  justify-content: center;
+}
+.auth-error {
+  color: #e05a5a;
+  font-size: 0.8rem;
+  min-height: 1em;
+  margin-top: 8px;
+}
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0 16px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.google-btn {
+  width: 100%;
+  justify-content: center;
+  gap: 10px;
+}
 
 /* ---------- Hero ---------- */
 .hero {
@@ -556,6 +679,31 @@ textarea {
 .empty-state {
   color: var(--text-secondary);
   text-align: center;
+}
+
+/* ---------- Toast bildirimi ---------- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translate(-50%, 12px);
+  z-index: 300;
+  background: var(--text-primary);
+  color: var(--bg);
+  padding: 12px 22px;
+  border-radius: 100px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  box-shadow: 0 12px 30px rgba(58, 46, 59, 0.25);
+  opacity: 0;
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
+  pointer-events: none;
+}
+.toast.is-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
 }
 .job-meta {
   color: var(--text-secondary);

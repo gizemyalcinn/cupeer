@@ -10,3 +10,7 @@ pytest
 pdfplumber
 google-genai
 fpdf2
+bcrypt
+authlib
+itsdangerous
+httpx
