@@ -1,5 +1,6 @@
 import os
 import time
+from datetime import date
 
 from google import genai
 from google.genai import types
@@ -36,7 +37,12 @@ def _get_client() -> genai.Client:
 
 
 def review_cv(cv_text: str) -> CVReview:
+    today = date.today().strftime("%d %B %Y")
     prompt = f"""Sen bir İK uzmanı ve kariyer koçusun. Aşağıdaki CV'yi değerlendir.
+
+Bugünün tarihi: {today}. CV'deki tarihleri (iş deneyimi, eğitim, staj vb.)
+bu tarihe göre değerlendir — bir tarihin "gelecekte" olduğunu ancak bugünün
+tarihinden sonraysa söyle, kendi tahminine göre değil.
 
 Not: Bu metin bir PDF dosyasından otomatik olarak çıkarılmıştır. Bu süreçte
 kelimelerin ortasına yanlışlıkla boşluk girebilir (örn. "Developed" kelimesinin
