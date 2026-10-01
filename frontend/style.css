@@ -362,6 +362,13 @@ a {
   flex: 1 1 480px;
   text-align: left;
 }
+.hero-greeting {
+  font-family: var(--font-display);
+  color: var(--primary);
+  font-size: 1rem;
+  letter-spacing: 0.05em;
+  margin-bottom: 14px;
+}
 .hero-badge {
   display: inline-flex;
   align-items: center;

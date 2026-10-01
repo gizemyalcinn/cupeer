@@ -314,12 +314,12 @@ function syncFavoriteButtons() {
 function renderFavorites() {
   if (!currentUser) {
     favoritesList.innerHTML =
-      '<p class="empty-state">Favorilerini kaydetmek için giriş yapmalısın.</p>';
+      '<p class="empty-state">Hazineni saklamak için önce kapıdan içeri gir (giriş yap).</p>';
     return;
   }
   if (favJobs.length === 0) {
     favoritesList.innerHTML =
-      '<p class="empty-state">Henüz favori ilanın yok. Sonuçlardaki kalp ikonuna basarak ekleyebilirsin.</p>';
+      '<p class="empty-state">Sandığın henüz boş, yolcu. Sonuçlardaki kalp ikonuna basarak hazinene ekle.</p>';
     return;
   }
   favoritesList.innerHTML = favJobs.map((job) => jobCardHtml(job, { showScore: false })).join("");
@@ -373,7 +373,7 @@ recommendBtn.addEventListener("click", async () => {
     return;
   }
 
-  resultsList.innerHTML = "<p>Aranıyor...</p>";
+  resultsList.innerHTML = "<p>Diyarlar taranıyor...</p>";
 
   const location = document.getElementById("recommend-location").value;
 
@@ -395,7 +395,7 @@ recommendBtn.addEventListener("click", async () => {
 
 function renderResults() {
   if (lastJobs.length === 0) {
-    resultsList.innerHTML = "<p>Sonuç bulunamadı.</p>";
+    resultsList.innerHTML = "<p>Bu diyarlarda uygun bir fırsat bulunamadı.</p>";
     return;
   }
 
