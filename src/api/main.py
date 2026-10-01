@@ -18,6 +18,8 @@ import io
 from src.pipeline import refresh_jobs
 from src.model.recommender import recommend_jobs
 from src.model.cover_letter import generate_cover_letter, guess_file_name
+from src.model.cv_review import review_cv, CVReview
+from google.genai.errors import ServerError
 from src.db.storage import add_favorite, remove_favorite, get_favorite_jobs, get_favorite_ids
 from src.preprocessing.schema import User
 from src.auth.security import get_current_user
@@ -169,6 +171,19 @@ async def extract_text(file: UploadFile = File(...)):
     with pdfplumber.open(io.BytesIO(contents)) as pdf:
         text = "\n".join(page.extract_text() or "" for page in pdf.pages)
     return {"text": text}
+
+
+@app.post("/cv-review", response_model=CVReview)
+async def cv_review(file: UploadFile = File(...)):
+    contents = await file.read()
+    with pdfplumber.open(io.BytesIO(contents)) as pdf:
+        text = "\n".join(page.extract_text() or "" for page in pdf.pages)
+    if not text.strip():
+        raise HTTPException(400, "PDF okunamadı, dosyayı kontrol et.")
+    try:
+        return review_cv(text)
+    except ServerError:
+        raise HTTPException(503, "CV analiz servisi şu an yoğun, lütfen biraz sonra tekrar dene.")
 
 
 class NoCacheStaticFiles(StaticFiles):

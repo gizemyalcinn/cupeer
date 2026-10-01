@@ -30,6 +30,7 @@
         <a href="#how">Nasıl Çalışır</a>
         <a href="#features">Özellikler</a>
         <a href="#tool">Demo</a>
+        <a href="#cv-review">CV İncele</a>
         <a href="#favorites">Favoriler</a>
       </div>
       <div class="nav-auth">
@@ -280,6 +281,64 @@
     <section class="results reveal">
       <h2>Sonuçlar</h2>
       <div id="results-list"></div>
+    </section>
+
+    <section id="cv-review" class="tool reveal">
+      <div class="eyebrow">CV Danışmanı</div>
+      <h2>CV'ni İncele</h2>
+      <p class="section-subtitle">
+        CV'ni yükle, ATS uyumluluğu ve içerik etkisi açısından yapay zeka destekli bir
+        değerlendirme al.
+      </p>
+
+      <div class="card">
+        <div class="inputs-row">
+          <div class="field">
+            <label>CV dosyası (PDF)</label>
+            <div class="file-upload">
+              <input
+                type="file"
+                id="cv-review-file"
+                accept=".pdf"
+                class="file-input-hidden"
+              />
+              <label for="cv-review-file" class="btn btn-outline file-select-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5z"/><path d="M14 2v6h6"/></svg>
+                Dosya Seç
+              </label>
+              <span id="cv-review-file-name" class="file-name">Dosya seçilmedi</span>
+            </div>
+          </div>
+        </div>
+        <p id="cv-review-status"></p>
+        <button id="cv-review-btn" class="btn btn-primary">İncele</button>
+      </div>
+
+      <div id="cv-review-result" class="cv-review-result hidden-field">
+        <div class="card cv-review-score-card">
+          <div class="cv-review-score-ring">
+            <span id="cv-review-overall-score">0</span>
+            <span class="cv-review-score-max">/100</span>
+          </div>
+          <p id="cv-review-summary" class="cv-review-summary"></p>
+        </div>
+
+        <div class="card">
+          <h3>Kategori Skorları</h3>
+          <div id="cv-review-categories" class="cv-review-categories"></div>
+        </div>
+
+        <div class="cv-review-lists">
+          <div class="card cv-review-strengths">
+            <h3>Güçlü Yönler</h3>
+            <ul id="cv-review-strengths-list"></ul>
+          </div>
+          <div class="card cv-review-improvements">
+            <h3>Geliştirilebilecek Alanlar</h3>
+            <ul id="cv-review-improvements-list"></ul>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section id="favorites" class="results reveal">

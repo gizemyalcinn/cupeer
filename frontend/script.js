@@ -520,6 +520,100 @@ async function handleListClick(e) {
 resultsList.addEventListener("click", handleListClick);
 favoritesList.addEventListener("click", handleListClick);
 
+// --- CV İncele ---
+const cvReviewFileInput = document.getElementById("cv-review-file");
+const cvReviewFileName = document.getElementById("cv-review-file-name");
+const cvReviewStatus = document.getElementById("cv-review-status");
+const cvReviewBtn = document.getElementById("cv-review-btn");
+const cvReviewResult = document.getElementById("cv-review-result");
+const cvReviewOverallScore = document.getElementById("cv-review-overall-score");
+const cvReviewSummary = document.getElementById("cv-review-summary");
+const cvReviewCategories = document.getElementById("cv-review-categories");
+const cvReviewStrengthsList = document.getElementById("cv-review-strengths-list");
+const cvReviewImprovementsList = document.getElementById("cv-review-improvements-list");
+
+function scoreClass(score) {
+  if (score >= 75) return "is-good";
+  if (score >= 50) return "is-mid";
+  return "is-low";
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+cvReviewFileInput.addEventListener("change", () => {
+  const file = cvReviewFileInput.files[0];
+  cvReviewFileName.textContent = file ? file.name : "Dosya seçilmedi";
+  cvReviewStatus.textContent = "";
+  cvReviewResult.classList.add("hidden-field");
+});
+
+cvReviewBtn.addEventListener("click", async () => {
+  const file = cvReviewFileInput.files[0];
+  if (!file) {
+    cvReviewStatus.textContent = "Önce bir PDF seç.";
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  cvReviewBtn.disabled = true;
+  cvReviewStatus.textContent = "CV'n inceleniyor, birkaç saniye sürebilir...";
+  cvReviewResult.classList.add("hidden-field");
+
+  try {
+    const response = await fetch(`${API_URL}/cv-review`, {
+      method: "POST",
+      body: formData,
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || "İnceleme başarısız oldu.");
+    }
+    const review = await response.json();
+
+    cvReviewOverallScore.textContent = review.overall_score;
+    cvReviewOverallScore.parentElement.className =
+      "cv-review-score-ring " + scoreClass(review.overall_score);
+    cvReviewSummary.textContent = review.summary;
+
+    cvReviewCategories.innerHTML = review.categories
+      .map(
+        (cat) => `
+      <div class="cv-review-category">
+        <div class="cv-review-category-head">
+          <span>${escapeHtml(cat.name)}</span>
+          <span>${cat.score}/100</span>
+        </div>
+        <div class="cv-review-bar">
+          <div class="cv-review-bar-fill ${scoreClass(cat.score)}" style="width:${cat.score}%"></div>
+        </div>
+        <p>${escapeHtml(cat.comment)}</p>
+      </div>
+    `,
+      )
+      .join("");
+
+    cvReviewStrengthsList.innerHTML = review.strengths
+      .map((s) => `<li>${escapeHtml(s)}</li>`)
+      .join("");
+    cvReviewImprovementsList.innerHTML = review.improvements
+      .map((s) => `<li>${escapeHtml(s)}</li>`)
+      .join("");
+
+    cvReviewStatus.textContent = "";
+    cvReviewResult.classList.remove("hidden-field");
+  } catch (err) {
+    cvReviewStatus.textContent = err.message || "İnceleme başarısız oldu.";
+  }
+
+  cvReviewBtn.disabled = false;
+});
+
 loadCurrentUser().then(() => {
   if (currentUser) {
     loadFavorites();

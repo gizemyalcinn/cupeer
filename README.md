@@ -28,6 +28,9 @@ have it write a tailored cover letter for any listing you pick.
   own signal and the posting date) are automatically filtered out.
 - **AI-generated cover letters** — writes a cover letter tailored to your CV
   and a chosen listing, downloadable as a PDF.
+- **CV review** — uploads your CV and returns a structured report (overall
+  score, per-category scores for ATS compatibility/content impact/format,
+  plus concrete strengths and improvements) powered by Gemini.
 - **Optional accounts** — sign up with email/password or Google to save
   favorite listings across visits; browsing and getting recommendations
   works fine without an account too.
@@ -40,9 +43,9 @@ have it write a tailored cover letter for any listing you pick.
 |---|---|
 | Backend | FastAPI, Pydantic |
 | Scraping | Apify Python SDK |
-| Recommendation model | sentence-transformers (multilingual embeddings) |
+| Recommendation model | Google Gemini embeddings (multilingual) |
 | Storage | SQLite |
-| Cover letter generation | Google Gemini API |
+| Cover letter + CV review generation | Google Gemini API |
 | PDF generation | fpdf2 |
 | Auth | Session cookies (Starlette `SessionMiddleware`) + bcrypt, Google OAuth via Authlib |
 | Frontend | Static HTML/CSS/JS (served from the same origin via FastAPI `StaticFiles`) |
