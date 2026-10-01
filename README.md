@@ -132,3 +132,4 @@ frontend/         Static HTML/CSS/JS UI
 tests/            Automated pytest tests
 scripts/manual/   Manual debug scripts used during development
 ```
+
