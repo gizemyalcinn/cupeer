@@ -63,6 +63,26 @@ authModal.addEventListener("click", (e) => {
   if (e.target === authModal) closeAuthModal();
 });
 
+// --- Mobil hamburger menü ---
+const navToggleBtn = document.getElementById("nav-toggle-btn");
+const navLinks = document.querySelector(".nav-links");
+
+function closeNavMenu() {
+  navToggleBtn.classList.remove("is-open");
+  navToggleBtn.setAttribute("aria-expanded", "false");
+  navLinks.classList.remove("is-open");
+}
+
+navToggleBtn.addEventListener("click", () => {
+  const isOpen = navLinks.classList.toggle("is-open");
+  navToggleBtn.classList.toggle("is-open", isOpen);
+  navToggleBtn.setAttribute("aria-expanded", String(isOpen));
+});
+
+navLinks.querySelectorAll("a").forEach((link) => {
+  link.addEventListener("click", closeNavMenu);
+});
+
 document.querySelectorAll(".auth-tab").forEach((tab) => {
   tab.addEventListener("click", () => {
     document.querySelectorAll(".auth-tab").forEach((t) => t.classList.remove("is-active"));
