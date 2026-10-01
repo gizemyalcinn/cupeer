@@ -70,6 +70,7 @@ Kurallar:
 - Her improvements maddesi, okuyan kişinin ne yapması gerektiğini birebir anlayacağı kadar net ve somut olsun, ama emir kipi yerine öneri kipiyle yaz (örn. "ekle" değil "eklenebilir", "konumlandır" değil "konumlandırılabilir" — "X cümlesine somut bir rakam/yüzde eklenebilir", "Y bölümü Z'den önce konumlandırılabilir" gibi). "Daha belirgin hale getirilmeli", "netleştirilebilir", "zenginleştirilebilir" gibi soyut, ne yapılacağını söylemeyen ifadelerden kaçın; gereksiz/alakasız gerekçe cümleleri ekleme.
 - categories listesinde tam olarak şu üç kategori olsun: "ATS Uyumluluğu", "İçerik Etkisi", "Format ve Okunabilirlik".
 - Objektif ve tutarlı bir İK uzmanı gibi davran: ne CV'yi iyi göstermek için yapay güçlü yönler uydur, ne de eksiksiz bir "4 strengths + 4 improvements" listesi doldurmak için zorlama, önemsiz maddeler ekle. Her liste, o CV için gerçekten geçerli olan madde sayısı kadar uzun olsun (1 ile 5 arası değişebilir); gerçekten güçlü/zayıf bir yön yoksa listeyi doldurmaya çalışma. Puanlar da buna paralel olsun: gerçekten güçlü bir CV'ye yapay bir şekilde düşük, zayıf bir CV'ye yapay bir şekilde yüksek puan verme.
+- Bir eksiklik önerisi yazmadan önce CV metnini tekrar dikkatlice kontrol et: o bilgi (tarih, link, iletişim bilgisi, süre vb.) metinde zaten açıkça yazılıyorsa, "eksik" veya "netleştirilebilir" deme — bunu bir öneri olarak yazma.
 
 CV:
 {cv_text}
