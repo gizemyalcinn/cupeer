@@ -34,8 +34,9 @@ have it write a tailored cover letter for any listing you pick.
 - **Optional accounts** — sign up with email/password or Google to save
   favorite listings across visits; browsing and getting recommendations
   works fine without an account too.
-- **Runs locally** — your data stays on your machine; the only external
-  dependencies are scraping (Apify) and cover letter generation (Gemini).
+- **Self-contained** — runs with just a Postgres database plus two
+  external APIs: scraping (Apify) and AI features like cover letters
+  and CV review (Gemini).
 
 ## Tech stack
 
@@ -44,7 +45,7 @@ have it write a tailored cover letter for any listing you pick.
 | Backend | FastAPI, Pydantic |
 | Scraping | Apify Python SDK |
 | Recommendation model | Google Gemini embeddings (multilingual) |
-| Storage | SQLite |
+| Storage | PostgreSQL |
 | Cover letter + CV review generation | Google Gemini API |
 | PDF generation | fpdf2 |
 | Auth | Session cookies (Starlette `SessionMiddleware`) + bcrypt, Google OAuth via Authlib |
@@ -71,6 +72,7 @@ cp .env.example .env
 ```
 APIFY_API_TOKEN=...      # from https://console.apify.com
 GEMINI_API_KEY=...       # from https://aistudio.google.com
+DATABASE_URL=...         # PostgreSQL connection string (e.g. a free Render Postgres instance)
 SESSION_SECRET_KEY=...   # any random string, e.g. `python -c "import secrets; print(secrets.token_hex(32))"`
 GOOGLE_CLIENT_ID=...     # optional, see below
 GOOGLE_CLIENT_SECRET=... # optional, see below
@@ -125,7 +127,7 @@ src/
   scraping/       Per-platform scrapers + country detection
   preprocessing/  Shared Job/User schemas, cleaning/deduping
   model/          Embeddings, recommendation, freshness, cover letters
-  db/             SQLite storage layer
+  db/             PostgreSQL storage layer
 frontend/         Static HTML/CSS/JS UI
 tests/            Automated pytest tests
 scripts/manual/   Manual debug scripts used during development

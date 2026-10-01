@@ -2,6 +2,7 @@ apify-client==2.5.1
 pydantic
 beautifulsoup4
 numpy
+psycopg2-binary
 fastapi
 python-multipart
 uvicorn
