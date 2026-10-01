@@ -67,6 +67,7 @@ Kurallar:
 - overall_score ve her kategorinin score değeri 0-100 arası bir tam sayı olsun.
 - summary alanına 2-3 cümlelik genel bir değerlendirme yaz.
 - strengths ve improvements listelerinde her madde somut ve uygulanabilir olsun (CV'de gerçekten var olan veya eksik olan şeylere referansla, genel geçer tavsiye verme).
+- Her improvements maddesi, okuyan kişinin ne yapması gerektiğini birebir anlayacağı kadar net ve eyleme dönük olsun (örn. "X cümlesine somut bir rakam/yüzde ekle", "Y bölümünü Z'den önce konumlandır" gibi). "Daha belirgin hale getirilmeli", "netleştirilebilir", "zenginleştirilebilir" gibi soyut, ne yapılacağını söylemeyen ifadelerden kaçın; gereksiz/alakasız gerekçe cümleleri ekleme.
 - categories listesinde tam olarak şu üç kategori olsun: "ATS Uyumluluğu", "İçerik Etkisi", "Format ve Okunabilirlik".
 
 CV:
