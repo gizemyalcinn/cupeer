@@ -45,7 +45,7 @@ ADIM 2 — Ön yazıyı yaz. Zorunlu kurallar:
 - CV'de olmayan hiçbir beceri veya deneyimi uydurma.
 - CV hangi dilde olursa olsun (Türkçe veya İngilizce), ön yazıyı HER ZAMAN Türkçe yaz.
 - Standart bir iş mektubu formatında yaz: hitapla başla ("Sayın ... Yetkilisi," gibi), 3-4 paragraf gövde, saygı ifadesiyle ve adayın adıyla bitir.
-- 250-350 kelime civarında olsun.
+- 180-230 kelime civarında olsun, kısa ve öz tut.
 - Sadece ön yazının kendisini döndür — başlık, konu satırı, açıklama veya not ekleme; doğrudan hitapla başlasın.
 
 CV:
