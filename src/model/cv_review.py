@@ -38,6 +38,13 @@ def _get_client() -> genai.Client:
 def review_cv(cv_text: str) -> CVReview:
     prompt = f"""Sen bir İK uzmanı ve kariyer koçusun. Aşağıdaki CV'yi değerlendir.
 
+Not: Bu metin bir PDF dosyasından otomatik olarak çıkarılmıştır. Bu süreçte
+kelimelerin ortasına yanlışlıkla boşluk girebilir (örn. "Developed" kelimesinin
+"Deve loped" olarak görünmesi) veya satırlar farklı sırada birleşebilir. Böyle
+teknik çıkarım kaynaklı bozulmaları gerçek bir yazım hatası veya format sorunu
+olarak değerlendirme ve raporlama; sadece CV'nin kendi içeriğine (gerçekten
+eksik bilgi, tutarsız tarih, zayıf ifade vb.) odaklan.
+
 Değerlendirme kriterleri:
 - ATS Uyumluluğu: Anahtar kelime kullanımı, standart bölüm başlıkları, ATS tarayıcıların okuyabileceği sade bir yapı var mı.
 - İçerik Etkisi: Somut başarılar, ölçülebilir sonuçlar (rakam/yüzde), eylem fiilleriyle yazılmış maddeler var mı, yoksa genel/havada ifadeler mi kullanılmış.
