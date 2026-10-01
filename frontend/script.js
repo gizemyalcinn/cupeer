@@ -581,12 +581,13 @@ cvReviewBtn.addEventListener("click", async () => {
       "cv-review-score-ring " + scoreClass(review.overall_score);
     cvReviewSummary.textContent = review.summary;
 
+    const CATEGORY_LABELS = ["ATS Uyumluluğu", "İçerik Etkisi", "Format ve Okunabilirlik"];
     cvReviewCategories.innerHTML = review.categories
       .map(
-        (cat) => `
+        (cat, i) => `
       <div class="cv-review-category">
         <div class="cv-review-category-head">
-          <span>${escapeHtml(cat.name)}</span>
+          <span>${escapeHtml(CATEGORY_LABELS[i] || cat.name)}</span>
           <span>${cat.score}/100</span>
         </div>
         <div class="cv-review-bar">
