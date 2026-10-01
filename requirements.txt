@@ -3,6 +3,7 @@ pydantic
 beautifulsoup4
 numpy
 fastapi
+python-multipart
 uvicorn
 python-dotenv
 pytest
