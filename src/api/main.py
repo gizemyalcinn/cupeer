@@ -171,4 +171,11 @@ async def extract_text(file: UploadFile = File(...)):
     return {"text": text}
 
 
-app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
+class NoCacheStaticFiles(StaticFiles):
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
+app.mount("/", NoCacheStaticFiles(directory="frontend", html=True), name="frontend")
