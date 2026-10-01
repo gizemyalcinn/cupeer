@@ -41,7 +41,7 @@ ADIM 2 — Ön yazıyı yaz. Zorunlu kurallar:
 - İnsan eliyle yazılmış gibi doğal aksın; yapay zeka metinlerine özgü kalıp ifadelerden (örn. "büyük bir heyecanla", "güçlü bir zemin oluşturdu", "vizyonunu takip ediyorum", aşırı sıfat yığma) kesinlikle kaçın.
 - Resmi ve profesyonel bir dil kullan ama katı/robotik olma — sıcak, kendinden emin, samimi ama saygılı bir ses tonu tut.
 - CV'de olmayan hiçbir beceri veya deneyimi uydurma.
-- CV hangi dildeyse (Türkçe veya İngilizce) ön yazıyı da o dilde yaz.
+- CV hangi dilde olursa olsun (Türkçe veya İngilizce), ön yazıyı HER ZAMAN Türkçe yaz.
 - Standart bir iş mektubu formatında yaz: hitapla başla ("Sayın ... Yetkilisi," gibi), 3-4 paragraf gövde, saygı ifadesiyle ve adayın adıyla bitir.
 - 250-350 kelime civarında olsun.
 - Sadece ön yazının kendisini döndür — başlık, konu satırı, açıklama veya not ekleme; doğrudan hitapla başlasın.

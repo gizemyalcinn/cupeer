@@ -44,11 +44,11 @@ Değerlendirme kriterleri:
 - Format ve Okunabilirlik: Tutarlılık, düzen, gereksiz bilgi veya eksik bölüm var mı.
 
 Kurallar:
-- CV hangi dildeyse (Türkçe veya İngilizce) değerlendirmeyi de o dilde yaz.
+- CV hangi dilde olursa olsun (Türkçe veya İngilizce), değerlendirmeyi HER ZAMAN Türkçe yaz.
 - overall_score ve her kategorinin score değeri 0-100 arası bir tam sayı olsun.
 - summary alanına 2-3 cümlelik genel bir değerlendirme yaz.
 - strengths ve improvements listelerinde her madde somut ve uygulanabilir olsun (CV'de gerçekten var olan veya eksik olan şeylere referansla, genel geçer tavsiye verme).
-- categories listesinde tam olarak şu üç kategori olsun: "ATS Uyumluluğu", "İçerik Etkisi", "Format ve Okunabilirlik" (CV İngilizce ise İngilizce karşılıklarını kullan).
+- categories listesinde tam olarak şu üç kategori olsun: "ATS Uyumluluğu", "İçerik Etkisi", "Format ve Okunabilirlik".
 
 CV:
 {cv_text}
