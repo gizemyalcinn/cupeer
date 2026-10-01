@@ -126,9 +126,12 @@ def favorites(user: User | None = Depends(get_current_user)):
 
 @app.post("/cover-letter")
 def cover_letter(req: CoverLetterRequest):
-    text = generate_cover_letter(
-        req.profile_text, req.job_title, req.company, req.job_description
-    )
+    try:
+        text = generate_cover_letter(
+            req.profile_text, req.job_title, req.company, req.job_description
+        )
+    except ServerError:
+        raise HTTPException(503, "Ön yazı servisi şu an yoğun, lütfen biraz sonra tekrar dene.")
     file_name = guess_file_name(req.profile_text)
     return {"text": text, "file_name": file_name}
 

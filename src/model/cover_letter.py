@@ -1,7 +1,9 @@
 import os
 import re
+import time
 
 from google import genai
+from google.genai.errors import ServerError
 
 _client = None
 
@@ -56,8 +58,15 @@ Açıklama: {job_description}
 """
 
     client = _get_client()
-    response = client.models.generate_content(
-        model="gemini-3.6-flash",
-        contents=prompt,
-    )
-    return response.text
+    retries = 3
+    for attempt in range(retries):
+        try:
+            response = client.models.generate_content(
+                model="gemini-flash-lite-latest",
+                contents=prompt,
+            )
+            return response.text
+        except ServerError:
+            if attempt == retries - 1:
+                raise
+            time.sleep(3)
