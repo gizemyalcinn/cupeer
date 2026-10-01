@@ -37,7 +37,7 @@ def recommend_jobs(profile_text: str, top_n: int = 10, include_expired: bool = F
     if not jobs:
         return []
 
-    query_vector = embed_texts([profile_text])[0]
+    query_vector = embed_texts([profile_text], task_type="RETRIEVAL_QUERY")[0]
     title_scores = title_embeddings @ query_vector
     content_scores = content_embeddings @ query_vector
     scores = TITLE_WEIGHT * title_scores + CONTENT_WEIGHT * content_scores
