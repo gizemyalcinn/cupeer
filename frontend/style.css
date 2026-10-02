@@ -788,7 +788,8 @@ textarea {
   align-self: center;
   margin-top: 8px;
 }
-#results-list {
+#results-list,
+#favorites-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1757,7 +1758,8 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin: 0 0 20px;
+  max-width: 700px;
+  margin: 0 auto 20px;
 }
 .status-filter:empty {
   display: none;

@@ -1,55 +1,106 @@
 # Cupeer — cupid for your career
 
-Cupeer is a personal, end-to-end job recommendation system: upload your CV
-and it ranks fresh listings pulled from 7 different job platforms (LinkedIn,
-Indeed, Upwork, Kariyer.net, Eleman.net, Glassdoor, RemoteOK) by how well
-they match you.
+Cupeer is a personal, end-to-end job recommendation project. Upload your CV and
+it ranks job listings collected from seven platforms (LinkedIn, Indeed, Upwork,
+Kariyer.net, Eleman.net, Glassdoor, RemoteOK) by how closely they match you. It
+can also write a tailored cover letter, review your CV, and track the
+applications you make.
 
-Upload your CV, let Cupeer find the jobs that fit you best, and optionally
-have it write a tailored cover letter for any listing you pick.
+The interface is Turkish and themed as a medieval tavern (Alagard pixel font,
+dark wood and gold). The code, comments and this README are mostly English.
 
-![Cupeer homepage](frontend/assets/screenshot-hero.png)
+**Live demo:** https://cupeer.onrender.com — hosted on Render's free tier, so
+the first request after a quiet period can take 30–50 seconds while the server
+wakes up. A fictional CV to try it with is in
+[`scripts/manual/sample_cv.pdf`](scripts/manual/sample_cv.pdf).
 
-![How it works](frontend/assets/screenshot-how-it-works.png)
+![Cupeer homepage](docs/screenshots/hero.jpg)
 
-![Ranked results for a Full Stack Developer CV](frontend/assets/screenshot-results.png)
+## What it does
 
-## Features
+![Ranked results with cover letter settings](docs/screenshots/results.jpg)
 
-- **Scrape 7 platforms at once** — pulls listings from LinkedIn, Indeed,
-  Upwork, Kariyer.net, Eleman.net, Glassdoor and RemoteOK via Apify Actors.
-- **Semantic matching** — compares your CV and each listing with a
-  multilingual (TR/EN) embedding model and ranks by meaning, not just
-  keyword overlap.
-- **Country-aware filtering** — every listing is tagged with the country it
-  was scraped for, so filtering by "Turkey" or "USA" only shows jobs from
-  that country.
-- **Freshness tracking** — expired or stale listings (based on the source's
-  own signal and the posting date) are automatically filtered out.
-- **AI-generated cover letters** — writes a cover letter tailored to your CV
-  and a chosen listing, downloadable as a PDF.
-- **CV review** — uploads your CV and returns a structured report (overall
-  score, per-category scores for ATS compatibility/content impact/format,
-  plus concrete strengths and improvements) powered by Gemini.
-- **Optional accounts** — sign up with email/password or Google to save
-  favorite listings across visits; browsing and getting recommendations
-  works fine without an account too.
-- **Self-contained** — runs with just a Postgres database plus two
-  external APIs: scraping (Apify) and AI features like cover letters
-  and CV review (Gemini).
+- **Semantic matching.** Your CV and every listing are embedded with Gemini's
+  multilingual embedding model, so a Turkish CV can match an English listing.
+  Ranking is by meaning, not keyword overlap.
+- **Cover letters.** Pick a tone (balanced, formal, friendly), a length (short,
+  medium, long) and a language (Turkish or English), then edit the result,
+  regenerate it, or download it as a PDF.
+
+  ![A generated cover letter](docs/screenshots/cover-letter.jpg)
+
+- **CV review.** Upload a PDF and get an overall score, scores for ATS
+  compatibility, content impact and format, plus concrete strengths and
+  suggestions.
+
+  ![CV review](docs/screenshots/cv-review.jpg)
+
+- **Application tracking.** Save listings to "Hazine Sandığım" (the treasure
+  chest) and mark each as saved, applied, interview, offer or rejected. Filter
+  by status.
+
+  ![Application tracking](docs/screenshots/favorites.jpg)
+
+- **Scraping seven platforms.** New listings are pulled through Apify actors,
+  cleaned, de-duplicated and embedded. Only new listings are stored.
+- **Country-aware filtering.** Each listing is tagged with the country it was
+  searched for, so filtering by "Türkiye" or "ABD" only shows jobs from there.
+- **Freshness.** Listings the source marks as expired, or posted more than 45
+  days ago, are left out of the results.
+- **Accounts.** Email and password, or Google sign-in. Browsing, matching, cover
+  letters and CV review work without an account; saving favorites needs one.
+  Accounts can be deleted from the interface.
+- **Works on phones.** Responsive layout, 44 px touch targets, safe-area
+  support, and keyboard navigation throughout.
+
+<p align="center">
+  <img src="docs/screenshots/mobile-results.jpg" alt="Cupeer on a phone" width="320">
+</p>
+
+### What the match percentage means
+
+The "Uyum" percentage is a similarity score between your CV and the listing, not
+a probability that you will get the job. It is computed like this:
+
+```
+score = 0.6 × cosine(CV, listing title) + 0.4 × cosine(CV, company + location + description)
+```
+
+Embeddings come from `gemini-embedding-001` (768 dimensions, normalised), so the
+cosine similarity is a plain dot product. The CV is embedded as a retrieval
+query and listings as retrieval documents. There is no trained ranking model;
+quality depends on the embedding model and on the listing text.
+
+## How it fits together
+
+```
+ Apify actors (7 platforms)
+        │  scrape            only the site owner can trigger this
+        ▼
+ clean + de-duplicate ──► Gemini embeddings ──► PostgreSQL (listings, vectors, users, favorites)
+                                                       │
+ CV (PDF) ──► text ──► query embedding ──► cosine ranking ──► filters (freshness, country)
+        │
+        └──► Gemini: cover letter, CV review
+```
+
+The backend is a single FastAPI app that also serves the static frontend, so
+there is no separate frontend build or server.
 
 ## Tech stack
 
 | Layer | Technology |
 |---|---|
 | Backend | FastAPI, Pydantic |
-| Scraping | Apify Python SDK |
-| Recommendation model | Google Gemini embeddings (multilingual) |
-| Storage | PostgreSQL |
-| Cover letter + CV review generation | Google Gemini API |
-| PDF generation | fpdf2 |
-| Auth | Session cookies (Starlette `SessionMiddleware`) + bcrypt, Google OAuth via Authlib |
-| Frontend | Static HTML/CSS/JS (served from the same origin via FastAPI `StaticFiles`) |
+| Scraping | Apify Python SDK (`apify-client` pinned to 2.5.1) |
+| Embeddings | Google Gemini `gemini-embedding-001` |
+| Cover letters, CV review | Google Gemini (`gemini-flash-lite-latest`, structured output for the review) |
+| Storage | PostgreSQL via `psycopg2`, embeddings stored as `BYTEA` |
+| PDF in/out | `pdfplumber` (read), `fpdf2` (write) |
+| Auth | Starlette `SessionMiddleware` signed cookies, `bcrypt`, Google OAuth via Authlib |
+| Frontend | Plain HTML, CSS and JavaScript, no framework or build step |
+| Fonts | Alagard and EB Garamond, both self-hosted |
+| Hosting | Render (free web service and free Postgres) |
 
 ## Setup
 
@@ -61,30 +112,31 @@ venv\Scripts\activate        # Windows
 # source venv/bin/activate   # macOS/Linux
 
 pip install -r requirements.txt
-```
-
-Copy `.env.example` to `.env` and fill in your own API keys:
-
-```bash
 cp .env.example .env
 ```
 
-```
-APIFY_API_TOKEN=...      # from https://console.apify.com
-GEMINI_API_KEY=...       # from https://aistudio.google.com
-DATABASE_URL=...         # PostgreSQL connection string (e.g. a free Render Postgres instance)
-SESSION_SECRET_KEY=...   # any random string, e.g. `python -c "import secrets; print(secrets.token_hex(32))"`
-GOOGLE_CLIENT_ID=...     # optional, see below
-GOOGLE_CLIENT_SECRET=... # optional, see below
-```
+Fill in `.env`:
 
-Email/password accounts work out of the box once `SESSION_SECRET_KEY` is set.
-"Sign in with Google" is optional — without `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`
-that button just returns an error, everything else still works. To enable it:
+| Variable | Required | Purpose |
+|---|---|---|
+| `DATABASE_URL` | yes | PostgreSQL connection string |
+| `GEMINI_API_KEY` | yes | Embeddings, cover letters, CV review ([AI Studio](https://aistudio.google.com)) |
+| `APIFY_API_TOKEN` | for scraping | Collecting listings ([Apify console](https://console.apify.com)) |
+| `SESSION_SECRET_KEY` | yes in production | Signs session cookies; e.g. `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `REFRESH_ALLOWED_EMAILS` | for scraping | Comma-separated e-mails allowed to run paid scrapes (see Security). Empty means nobody can |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | optional | Google sign-in |
 
-1. Go to the [Google Cloud Console](https://console.cloud.google.com/apis/credentials) and create an OAuth 2.0 Client ID (application type: Web application).
-2. Add `http://127.0.0.1:8000/auth/google/callback` as an authorized redirect URI (adjust the domain for production).
-3. Copy the generated Client ID and Client Secret into `.env`.
+Tables are created automatically on first connection.
+
+Email and password accounts work as soon as `SESSION_SECRET_KEY` is set. For
+Google sign-in, create an OAuth 2.0 Client ID (Web application) in the
+[Google Cloud Console](https://console.cloud.google.com/apis/credentials), add
+`http://127.0.0.1:8000/auth/google/callback` as a redirect URI, and put the ID
+and secret in `.env`. Without them the Google button simply reports an error and
+everything else still works.
+
+To scrape, sign in with Google using an e-mail listed in
+`REFRESH_ALLOWED_EMAILS`, then use the "Yeni ilan çek" form.
 
 ## Running
 
@@ -92,82 +144,127 @@ that button just returns an error, everything else still works. To enable it:
 uvicorn src.api.main:app --reload
 ```
 
-Then open `http://127.0.0.1:8000` in your browser. The frontend is served
-from the same origin as the backend, so there's no separate server to set up.
+Open http://127.0.0.1:8000. In production keep a single worker
+(`WEB_CONCURRENCY=1`), because the rate limiter is in memory.
 
 ## Tests
-
-Unit tests that don't depend on any external service (Apify, Gemini) —
-fully local and free — live in `tests/`:
 
 ```bash
 pytest
 ```
 
-Files under `scripts/manual/` are not automated tests — they're scripts
-written during development to manually verify individual platforms, and they
-make real (paid) API requests when run. Run them intentionally, not as part
-of any test suite. The exception is `seed_demo_jobs.py`, which inserts a
-handful of realistic sample listings straight into the local database — no
-API calls, useful for trying out the "Öner" flow without spending Apify
-credits.
+The tests need no network access, API keys or database: they cover cleaning,
+country detection, freshness, request validation, rate limiting, security
+headers, upload limits, the scraping permission rules, password strength, the
+favorite-status endpoint and the cover-letter prompt options.
+
+Files under `scripts/manual/` are not tests. They are scripts written during
+development to check individual platforms or the pipeline by hand, and many make
+real, paid API calls. Run them deliberately. `seed_demo_jobs.py` is the
+exception: it inserts a few sample listings without any API calls, which is
+handy for trying the matching flow for free.
+
+## API
+
+| Method | Path | Notes |
+|---|---|---|
+| `POST` | `/recommend` | Rank stored listings for a CV text |
+| `POST` | `/extract-text` | PDF to text |
+| `POST` | `/cv-review` | CV review |
+| `POST` | `/cover-letter`, `/cover-letter-pdf` | Cover letter text, PDF |
+| `POST` | `/refresh` | Scrape and store new listings (owner only) |
+| `GET` | `/favorites` | The signed-in user's favorites with their status |
+| `POST` | `/favorite`, `/favorite/status` | Add or remove a favorite, change its status |
+| `POST` | `/auth/register`, `/auth/login`, `/auth/logout` | Email and password |
+| `GET` | `/auth/google/login`, `/auth/google/callback`, `/auth/me` | Google sign-in, current user |
+| `POST` | `/auth/delete-account` | Delete the account and its data |
+
+Interactive API docs are switched off on purpose.
 
 ## Security
 
-What's in place, and where to look:
+What is in place, and where to look:
 
-- **Auth** — bcrypt password hashes, signed `HttpOnly` + `SameSite=Lax` session
-  cookies (`Secure` in production), session reset on login, Google sign-in only
-  trusts verified e-mails, per-account lockout after 5 failed logins
-  (`src/auth/`).
-- **Rate limiting** — per-IP sliding-window limits on login, registration and
-  every endpoint that costs money or CPU (Gemini, PDF parsing, Apify)
-  (`src/api/hardening.py`). In-memory, so it assumes a single worker.
-- **Authorization** — scraping new listings (`/refresh`, paid Apify calls) is
-  restricted to the e-mail(s) in `REFRESH_ALLOWED_EMAILS` and only for sessions
-  opened through Google sign-in (password sign-up doesn't verify e-mails). The
+- **Auth.** bcrypt password hashes, common and very simple passwords rejected,
+  signed `HttpOnly` + `SameSite=Lax` session cookies (`Secure` in production),
+  session reset on login, per-account lockout after five failed logins, Google
+  sign-in only trusts verified e-mails (`src/auth/`).
+- **Paid scraping is owner-only.** `/refresh` costs real Apify credits. It runs
+  only for e-mails in `REFRESH_ALLOWED_EMAILS` and only in a session opened
+  through Google sign-in, because password sign-up does not verify e-mails. The
   list is empty by default, which keeps the endpoint closed. Per-user and global
-  hourly caps still apply. Favorites are always scoped to the session user.
-- **Input validation** — length/range limits on every request body; uploads are
-  checked for size (5 MB), `%PDF-` magic bytes and page count before parsing.
-- **XSS / injection** — all SQL is parameterized; third-party listing data is
-  HTML-escaped and links are limited to `http(s)` before rendering; strict CSP.
-- **CSRF / CORS** — SameSite cookies plus an `Origin` check on state-changing
-  requests; no CORS headers are sent, so the API is same-origin only.
-- **Headers** — CSP, HSTS (over HTTPS), `X-Frame-Options`, `nosniff`,
+  hourly caps apply on top.
+- **Rate limiting.** Per-IP sliding windows on login, registration and every
+  endpoint that costs money or CPU (`src/api/hardening.py`). In memory, so it
+  assumes one worker.
+- **Input validation.** Length and range limits on every request body. Uploads
+  are checked for size (5 MB), the `%PDF-` signature and page count before being
+  parsed, and any request body over 6 MB is rejected early.
+- **XSS and injection.** All SQL is parameterised. Third-party listing text is
+  HTML-escaped and links are limited to `http(s)`. The content security policy
+  allows no third-party hosts.
+- **CSRF and CORS.** SameSite cookies plus an `Origin` check on state-changing
+  requests. No CORS headers are sent, so the API is same-origin only.
+- **Headers.** CSP, HSTS over HTTPS, `X-Frame-Options`, `nosniff`,
   `Referrer-Policy`, `Permissions-Policy`.
-- **Errors & logs** — a global handler returns generic 500s; auth and abuse
-  events are logged (`cupeer.audit`) with e-mails hashed, never passwords.
-- **Dependencies / CI** — `.github/workflows/security.yml` runs `pip-audit`,
-  `bandit` and the tests on every push and weekly; Dependabot opens update PRs.
-- **Backups** — `python scripts/backup_db.py backup` / `restore <file>` (output
+- **Errors and logs.** Generic error responses, no stack traces. Auth and abuse
+  events go to an audit log with e-mails hashed, never passwords. Old failed
+  login attempts are deleted after a day.
+- **Dependencies.** A GitHub Actions workflow runs `pip-audit`, `bandit` and the
+  tests on every push and weekly; Dependabot opens update PRs.
+- **Backups.** `python scripts/backup_db.py backup` and `restore <file>` (output
   goes to the git-ignored `backups/`).
 
-Secrets live only in `.env` / the host's environment variables; the app refuses
-to start in production without `SESSION_SECRET_KEY`.
+Secrets live only in `.env` or the host's environment. In production the app
+refuses to start without `SESSION_SECRET_KEY`.
+
+**Known limitation:** e-mail addresses are not verified at sign-up (no mail
+service is wired in). That is why the privileged scrape action requires a Google
+session instead.
+
+## Privacy
+
+The privacy and terms pages (`/privacy/`, `/terms/`) describe what the live site
+does. In short: a CV is processed in memory and is never stored, but its text is
+sent to Google's Gemini API to produce matches, letters and reviews. The only
+cookie is the signed session cookie, so there is no cookie banner. Accounts can
+be deleted from the interface. Fonts are served from the site itself, so
+visiting it makes no requests to Google.
+
+## Deploying
+
+The live site runs on Render: a free web service and a free PostgreSQL
+instance, auto-deployed from `main`. Set the environment variables above on the
+web service, use the database's internal URL for `DATABASE_URL`, and keep
+`WEB_CONCURRENCY=1`. Render's free Postgres is deleted after about a month, so
+take a backup first and recreate it if you want to keep the data.
 
 ## A note on cost
 
-Apify and Gemini both offer free tiers, but they're limited. This project
-calls both only when needed, with low `max_items` values by default — still,
-keep an eye on your own usage/quota pages when using your own API keys.
+Apify and Gemini both have free tiers, but they are limited. Scraping is the
+costly part, which is why it is restricted and uses small `max_items` values by
+default. Watch your own quotas when using your own keys.
 
 ## Project structure
 
 ```
 src/
-  api/            FastAPI endpoints
-  auth/           Password hashing, sessions, Google OAuth
-  scraping/       Per-platform scrapers + country detection
-  preprocessing/  Shared Job/User schemas, cleaning/deduping
-  model/          Embeddings, recommendation, freshness, cover letters
-  db/             PostgreSQL storage layer
-frontend/         Static HTML/CSS/JS UI
+  api/            FastAPI app, request limits, security middleware
+  auth/           Password hashing, sessions, Google OAuth, scrape permission
+  scraping/       One scraper per platform, country detection
+  preprocessing/  Shared Job/User schemas, cleaning and de-duplication
+  model/          Embeddings, ranking, freshness, cover letters, CV review
+  db/             PostgreSQL storage
+frontend/         Static HTML/CSS/JS, privacy and terms pages
+docs/screenshots/ Images used in this README
 tests/            Automated pytest tests
-scripts/manual/   Manual debug scripts used during development
+scripts/          Backup tool and manual debug scripts
+fonts/            Fonts used for the cover-letter PDF
 ```
 
-## Credits
+## Credits and licence
 
 - Alagard pixel font (licensed).
-- EB Garamond (SIL Open Font License), self-hosted.
+- EB Garamond, SIL Open Font License, self-hosted.
+- Tinos, used for the cover-letter PDF.
+- Code released under the [MIT License](LICENSE).
