@@ -3,6 +3,8 @@ from fastapi.testclient import TestClient
 
 from src.api import hardening
 from src.api.main import app
+from src.auth.security import can_refresh, get_current_user
+from src.preprocessing.schema import User
 
 client = TestClient(app)
 
@@ -116,3 +118,34 @@ def test_delete_account_requires_login():
 def test_csp_allows_no_third_party_hosts():
     csp = client.get("/").headers["content-security-policy"]
     assert "http" not in csp
+
+
+class _FakeRequest:
+    def __init__(self, session):
+        self.session = session
+
+
+OWNER = User(id="1", email="Owner@Example.com")
+
+
+def test_refresh_is_closed_when_no_owner_configured(monkeypatch):
+    monkeypatch.delenv("REFRESH_ALLOWED_EMAILS", raising=False)
+    assert not can_refresh(_FakeRequest({"via_google": True}), OWNER)
+
+
+def test_refresh_only_for_listed_email_with_google_session(monkeypatch):
+    monkeypatch.setenv("REFRESH_ALLOWED_EMAILS", "owner@example.com, other@example.com")
+    assert can_refresh(_FakeRequest({"via_google": True}), OWNER)
+    assert not can_refresh(_FakeRequest({}), OWNER)  # şifreyle girilmiş oturum
+    assert not can_refresh(_FakeRequest({"via_google": True}), User(id="2", email="stranger@example.com"))
+    assert not can_refresh(_FakeRequest({"via_google": True}), None)
+
+
+def test_refresh_returns_403_for_logged_in_stranger(monkeypatch):
+    monkeypatch.setenv("REFRESH_ALLOWED_EMAILS", "owner@example.com")
+    app.dependency_overrides[get_current_user] = lambda: User(id="2", email="stranger@example.com")
+    try:
+        response = client.post("/refresh", json={"keywords": "python"})
+    finally:
+        app.dependency_overrides.clear()
+    assert response.status_code == 403

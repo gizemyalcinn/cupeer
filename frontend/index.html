@@ -282,6 +282,11 @@
 
       <div class="card">
         <h3>1. Yeni ilan çek</h3>
+        <p id="refresh-locked" class="card-note">
+          Canlı tarama ücretli bir servis kullandığı için yalnızca site sahibine açık. Aşağıdaki
+          öneriler, veritabanında zaten kayıtlı ilanlar üzerinden çalışır.
+        </p>
+        <div id="refresh-form" class="hidden-field">
         <div class="inputs-row">
           <div class="field">
             <label>Anahtar kelime</label>
@@ -294,6 +299,7 @@
         </div>
         <button id="refresh-btn" class="btn btn-primary">Yenile</button>
         <p id="refresh-status" role="status" aria-live="polite"></p>
+        </div>
       </div>
 
       <div class="card">

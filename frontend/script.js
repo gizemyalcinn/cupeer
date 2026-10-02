@@ -287,6 +287,9 @@ function updateAuthUI() {
     authOpenBtn.classList.remove("hidden-field");
     userMenu.classList.add("hidden-field");
   }
+  const canRefresh = Boolean(currentUser && currentUser.can_refresh);
+  document.getElementById("refresh-form").classList.toggle("hidden-field", !canRefresh);
+  document.getElementById("refresh-locked").classList.toggle("hidden-field", canRefresh);
 }
 
 async function loadCurrentUser() {
@@ -468,9 +471,8 @@ const refreshBtn = document.getElementById("refresh-btn");
 const refreshStatus = document.getElementById("refresh-status");
 
 refreshBtn.addEventListener("click", async () => {
-  if (!currentUser) {
-    showToast("İlan çekmek için önce giriş yapmalısın.");
-    openAuthModal();
+  if (!currentUser || !currentUser.can_refresh) {
+    showToast("Yeni ilan çekme yalnızca site sahibine açık.");
     return;
   }
 

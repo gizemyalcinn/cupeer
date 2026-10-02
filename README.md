@@ -123,9 +123,11 @@ What's in place, and where to look:
 - **Rate limiting** — per-IP sliding-window limits on login, registration and
   every endpoint that costs money or CPU (Gemini, PDF parsing, Apify)
   (`src/api/hardening.py`). In-memory, so it assumes a single worker.
-- **Authorization** — scraping new listings (`/refresh`, paid Apify calls)
-  requires an account, with per-user and global hourly caps. Favorites are
-  always scoped to the session user.
+- **Authorization** — scraping new listings (`/refresh`, paid Apify calls) is
+  restricted to the e-mail(s) in `REFRESH_ALLOWED_EMAILS` and only for sessions
+  opened through Google sign-in (password sign-up doesn't verify e-mails). The
+  list is empty by default, which keeps the endpoint closed. Per-user and global
+  hourly caps still apply. Favorites are always scoped to the session user.
 - **Input validation** — length/range limits on every request body; uploads are
   checked for size (5 MB), `%PDF-` magic bytes and page count before parsing.
 - **XSS / injection** — all SQL is parameterized; third-party listing data is

@@ -14,6 +14,7 @@ from src.auth.security import (
     login_user,
     logout_user,
     get_current_user,
+    can_refresh,
 )
 from src.db.storage import (
     create_user,
@@ -63,8 +64,14 @@ class DeleteAccountRequest(BaseModel):
     confirm_email: str = Field(max_length=254)
 
 
-def _user_public(user: User) -> dict:
-    return {"logged_in": True, "id": user.id, "email": user.email, "name": user.name}
+def _user_public(user: User, request: Request) -> dict:
+    return {
+        "logged_in": True,
+        "id": user.id,
+        "email": user.email,
+        "name": user.name,
+        "can_refresh": can_refresh(request, user),
+    }
 
 
 @router.post("/register", dependencies=[Depends(rate_limit("register", 10, 3600))])
@@ -88,7 +95,7 @@ def register(req: RegisterRequest, request: Request):
     create_user(user)
     login_user(request, user)
     log_event("auth.register", request, user=user.id)
-    return _user_public(user)
+    return _user_public(user, request)
 
 
 @router.post("/login", dependencies=[Depends(rate_limit("login", 30, 600))])
@@ -113,7 +120,7 @@ def login(req: LoginRequest, request: Request):
     clear_failed_logins(email)
     login_user(request, user)
     log_event("auth.login.success", request, user=user.id)
-    return _user_public(user)
+    return _user_public(user, request)
 
 
 @router.post("/logout")
@@ -141,10 +148,10 @@ def delete_account(
 
 
 @router.get("/me")
-def me(user: User | None = Depends(get_current_user)):
+def me(request: Request, user: User | None = Depends(get_current_user)):
     if not user:
         return {"logged_in": False}
-    return _user_public(user)
+    return _user_public(user, request)
 
 
 @router.get("/google/login", dependencies=[Depends(rate_limit("google-login", 20, 600))])
@@ -187,5 +194,6 @@ async def google_callback(request: Request):
         create_user(user)
 
     login_user(request, user)
+    request.session["via_google"] = True
     log_event("auth.google.success", request, user=user.id)
     return RedirectResponse(url="/")

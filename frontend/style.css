@@ -1621,3 +1621,8 @@ body {
     padding: 10px 14px;
   }
 }
+
+.card-note {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}

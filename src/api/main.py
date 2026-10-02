@@ -28,7 +28,7 @@ from src.model.cv_review import review_cv, CVReview
 from google.genai.errors import ServerError
 from src.db.storage import add_favorite, remove_favorite, get_favorite_jobs, get_favorite_ids
 from src.preprocessing.schema import User
-from src.auth.security import get_current_user
+from src.auth.security import get_current_user, can_refresh
 from src.auth.routes import router as auth_router
 from src.api.hardening import (
     IS_PROD,
@@ -125,11 +125,14 @@ class FavoriteRequest(BaseModel):
     favorite: bool
 
 
-# Apify kredisi harcayan işlem: giriş zorunlu + kullanıcı başına ve genel sınır.
+# Apify kredisi harcayan işlem: yalnızca site sahibi (REFRESH_ALLOWED_EMAILS) + kullanıcı başına ve genel sınır.
 @app.post("/refresh", dependencies=[Depends(rate_limit("refresh-ip", 6, 3600))])
 def refresh(request: Request, req: RefreshRequest, user: User | None = Depends(get_current_user)):
     if not user:
         raise HTTPException(401, "Yeni ilan çekmek için giriş yapmalısın.")
+    if not can_refresh(request, user):
+        log_event("refresh.denied", request, user=user.id)
+        raise HTTPException(403, "Yeni ilan çekme yalnızca site sahibine açık.")
     enforce_limit(request, f"refresh-user:{user.id}", 3, 3600, "refresh-user")
     enforce_limit(request, "refresh-global", 12, 3600, "refresh-global")
     log_event("refresh.run", request, user=user.id)
