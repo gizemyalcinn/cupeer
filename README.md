@@ -169,5 +169,5 @@ scripts/manual/   Manual debug scripts used during development
 
 ## Credits
 
-- Alagard pixel font by Hewett Tsoi (free, credit required).
+- Alagard pixel font (licensed).
 - EB Garamond (SIL Open Font License), self-hosted.
