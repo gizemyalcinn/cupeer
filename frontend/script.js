@@ -1,5 +1,32 @@
 const API_URL = "";
 
+const HTML_ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
+}
+
+// Üçüncü taraf ilan adreslerinde yalnızca http(s) kabul edilir (javascript: vb. engellenir).
+function safeUrl(url) {
+  try {
+    const parsed = new URL(url, window.location.origin);
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? parsed.href : "#";
+  } catch {
+    return "#";
+  }
+}
+
+class ApiError extends Error {}
+
+async function apiError(response, fallback) {
+  try {
+    const body = await response.json();
+    if (typeof body.detail === "string") return body.detail;
+  } catch {
+    // gövde JSON değilse varsayılan mesaja düş
+  }
+  return fallback;
+}
+
 const SOURCE_LABELS = {
   linkedin: "LinkedIn",
   indeed: "Indeed",
@@ -224,12 +251,15 @@ cvFileInput.addEventListener("change", async () => {
       method: "POST",
       body: formData,
     });
+    if (!response.ok) {
+      throw new ApiError(await apiError(response, "PDF okunamadı, dosyayı kontrol et."));
+    }
     const data = await response.json();
     profileTextArea.value = data.text;
     cvStatus.textContent = `✓ CV okundu (${data.text.length} karakter)`;
   } catch (err) {
     profileTextArea.value = "";
-    cvStatus.textContent = "PDF okunamadı, dosyayı kontrol et.";
+    cvStatus.textContent = err instanceof ApiError ? err.message : "PDF okunamadı, dosyayı kontrol et.";
   }
 });
 
@@ -251,11 +281,14 @@ refreshBtn.addEventListener("click", async () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ keywords, location }),
     });
+    if (!response.ok) {
+      throw new ApiError(await apiError(response, "Bir hata oluştu, sunucunun çalıştığından emin ol."));
+    }
     const data = await response.json();
     refreshStatus.textContent = `${data.inserted} yeni ilan eklendi.`;
   } catch (err) {
     refreshStatus.textContent =
-      "Bir hata oluştu, sunucunun çalıştığından emin ol.";
+      err instanceof ApiError ? err.message : "Bir hata oluştu, sunucunun çalıştığından emin ol.";
   }
 
   refreshBtn.disabled = false;
@@ -341,18 +374,18 @@ function jobCardHtml(job, { index, showScore = true } = {}) {
   const coverLetterOutput = index !== undefined ? `<div class="cover-letter-output" id="cover-letter-${index}"></div>` : "";
 
   return `
-    <div class="job-card" data-job-id="${job.id}">
+    <div class="job-card" data-job-id="${escapeHtml(job.id)}">
       <div class="job-top-row">
-        <span class="job-title">${job.title}</span>
-        <span class="job-tag">${SOURCE_LABELS[job.source] || job.source}</span>
-        <button type="button" class="favorite-btn ${isFav ? "is-favorite" : ""}" data-job-id="${job.id}" aria-pressed="${isFav ? "true" : "false"}" aria-label="Favorilere ekle/çıkar" title="Favorilere ekle/çıkar">
+        <span class="job-title">${escapeHtml(job.title)}</span>
+        <span class="job-tag">${escapeHtml(SOURCE_LABELS[job.source] || job.source)}</span>
+        <button type="button" class="favorite-btn ${isFav ? "is-favorite" : ""}" data-job-id="${escapeHtml(job.id)}" aria-pressed="${isFav ? "true" : "false"}" aria-label="Favorilere ekle/çıkar" title="Favorilere ekle/çıkar">
           ${HEART_ICON}
         </button>
       </div>
-      <div class="job-meta">${job.company || "Bilinmiyor"} · ${job.location || "Belirtilmemiş"}</div>
+      <div class="job-meta">${escapeHtml(job.company || "Bilinmiyor")} · ${escapeHtml(job.location || "Belirtilmemiş")}</div>
       <div class="job-bottom-row">
         ${scoreHtml}
-        <a href="${job.url}" target="_blank" class="job-link">İlana git →</a>
+        <a href="${escapeHtml(safeUrl(job.url))}" target="_blank" rel="noopener noreferrer" class="job-link">İlana git →</a>
         ${coverLetterBtn}
       </div>
       ${coverLetterOutput}
@@ -387,13 +420,15 @@ recommendBtn.addEventListener("click", async () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ profile_text: profileText, top_n: 50, location }),
     });
+    if (!response.ok) {
+      throw new ApiError(await apiError(response, "Bir hata oluştu, sunucunun çalıştığından emin ol."));
+    }
     const jobs = await response.json();
     lastJobs = jobs;
     visibleCount = PAGE_SIZE;
     renderResults();
   } catch (err) {
-    resultsList.innerHTML =
-      "<p>Bir hata oluştu, sunucunun çalıştığından emin ol.</p>";
+    resultsList.innerHTML = `<p>${escapeHtml(err instanceof ApiError ? err.message : "Bir hata oluştu, sunucunun çalıştığından emin ol.")}</p>`;
   } finally {
     recommendBtn.disabled = false;
     recommendBtn.classList.remove("is-loading");
@@ -460,9 +495,12 @@ async function handleListClick(e) {
           profile_text: profileText,
           job_title: job.title,
           company: job.company,
-          job_description: job.description,
+          job_description: (job.description || "").slice(0, 25000),
         }),
       });
+      if (!response.ok) {
+        throw new ApiError(await apiError(response, "Ön yazı oluşturulamadı, sunucuyu kontrol et."));
+      }
       const data = await response.json();
 
       outputEl.innerHTML = "";
@@ -479,7 +517,7 @@ async function handleListClick(e) {
       outputEl.appendChild(textarea);
       outputEl.appendChild(downloadBtn);
     } catch (err) {
-      outputEl.textContent = "Ön yazı oluşturulamadı, sunucuyu kontrol et.";
+      outputEl.textContent = err instanceof ApiError ? err.message : "Ön yazı oluşturulamadı, sunucuyu kontrol et.";
     }
 
     e.target.disabled = false;
@@ -547,12 +585,6 @@ function scoreClass(score) {
   return "is-low";
 }
 
-function escapeHtml(str) {
-  const div = document.createElement("div");
-  div.textContent = str;
-  return div.innerHTML;
-}
-
 cvReviewFileInput.addEventListener("change", () => {
   const file = cvReviewFileInput.files[0];
   cvReviewFileName.textContent = file ? file.name : "Dosya seçilmedi";
@@ -582,7 +614,7 @@ cvReviewBtn.addEventListener("click", async () => {
     });
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
-      throw new Error(err.detail || "İnceleme başarısız oldu.");
+      throw new ApiError(err.detail || "İnceleme başarısız oldu.");
     }
     const review = await response.json();
 
@@ -619,12 +651,17 @@ cvReviewBtn.addEventListener("click", async () => {
     cvReviewStatus.textContent = "";
     cvReviewResult.classList.remove("hidden-field");
   } catch (err) {
-    cvReviewStatus.textContent = err.message || "İnceleme başarısız oldu.";
+    cvReviewStatus.textContent = err instanceof ApiError ? err.message : "İnceleme başarısız oldu.";
   }
 
   cvReviewBtn.disabled = false;
   cvReviewBtn.classList.remove("is-loading");
 });
+
+if (new URLSearchParams(window.location.search).get("login") === "failed") {
+  showToast("Google ile giriş yapılamadı, tekrar dene.", 4000);
+  window.history.replaceState({}, "", window.location.pathname);
+}
 
 loadCurrentUser().then(() => {
   if (currentUser) {

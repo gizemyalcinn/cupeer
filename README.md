@@ -112,6 +112,38 @@ handful of realistic sample listings straight into the local database — no
 API calls, useful for trying out the "Öner" flow without spending Apify
 credits.
 
+## Security
+
+What's in place, and where to look:
+
+- **Auth** — bcrypt password hashes, signed `HttpOnly` + `SameSite=Lax` session
+  cookies (`Secure` in production), session reset on login, Google sign-in only
+  trusts verified e-mails, per-account lockout after 5 failed logins
+  (`src/auth/`).
+- **Rate limiting** — per-IP sliding-window limits on login, registration and
+  every endpoint that costs money or CPU (Gemini, PDF parsing, Apify)
+  (`src/api/hardening.py`). In-memory, so it assumes a single worker.
+- **Authorization** — scraping new listings (`/refresh`, paid Apify calls)
+  requires an account, with per-user and global hourly caps. Favorites are
+  always scoped to the session user.
+- **Input validation** — length/range limits on every request body; uploads are
+  checked for size (5 MB), `%PDF-` magic bytes and page count before parsing.
+- **XSS / injection** — all SQL is parameterized; third-party listing data is
+  HTML-escaped and links are limited to `http(s)` before rendering; strict CSP.
+- **CSRF / CORS** — SameSite cookies plus an `Origin` check on state-changing
+  requests; no CORS headers are sent, so the API is same-origin only.
+- **Headers** — CSP, HSTS (over HTTPS), `X-Frame-Options`, `nosniff`,
+  `Referrer-Policy`, `Permissions-Policy`.
+- **Errors & logs** — a global handler returns generic 500s; auth and abuse
+  events are logged (`cupeer.audit`) with e-mails hashed, never passwords.
+- **Dependencies / CI** — `.github/workflows/security.yml` runs `pip-audit`,
+  `bandit` and the tests on every push and weekly; Dependabot opens update PRs.
+- **Backups** — `python scripts/backup_db.py backup` / `restore <file>` (output
+  goes to the git-ignored `backups/`).
+
+Secrets live only in `.env` / the host's environment variables; the app refuses
+to start in production without `SESSION_SECRET_KEY`.
+
 ## A note on cost
 
 Apify and Gemini both offer free tiers, but they're limited. This project

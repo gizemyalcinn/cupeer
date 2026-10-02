@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import datetime
 from urllib.parse import quote
@@ -6,14 +7,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from fastapi import FastAPI, UploadFile, File, Response, Depends, HTTPException
+from fastapi import FastAPI, UploadFile, File, Request, Response, Depends, HTTPException
+from fastapi.concurrency import run_in_threadpool
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from fpdf import FPDF
 from fpdf.enums import XPos, YPos
-import pdfplumber
-import io
 
 from src.pipeline import refresh_jobs
 from src.model.recommender import recommend_jobs
@@ -24,56 +26,114 @@ from src.db.storage import add_favorite, remove_favorite, get_favorite_jobs, get
 from src.preprocessing.schema import User
 from src.auth.security import get_current_user
 from src.auth.routes import router as auth_router
+from src.api.hardening import (
+    IS_PROD,
+    MAX_BODY_BYTES,
+    SECURITY_HEADERS,
+    client_ip,
+    enforce_limit,
+    is_https,
+    log_event,
+    origin_allowed,
+    rate_limit,
+    read_pdf_text,
+)
 
-app = FastAPI()
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
+logger = logging.getLogger("cupeer")
+
+SESSION_SECRET = os.getenv("SESSION_SECRET_KEY")
+if not SESSION_SECRET:
+    if IS_PROD:
+        raise RuntimeError("SESSION_SECRET_KEY production ortamında tanımlı olmalı.")
+    SESSION_SECRET = "dev-insecure-secret-change-me"
+
+app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 app.add_middleware(
     SessionMiddleware,
-    secret_key=os.getenv("SESSION_SECRET_KEY", "dev-insecure-secret-change-me"),
+    secret_key=SESSION_SECRET,
     max_age=60 * 60 * 24 * 30,
     same_site="lax",
+    https_only=IS_PROD,
 )
 app.include_router(auth_router)
 
 
+@app.middleware("http")
+async def hardening_middleware(request: Request, call_next):
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > MAX_BODY_BYTES:
+        log_event("request.rejected", request, reason="body_too_large")
+        return JSONResponse({"detail": "İstek çok büyük."}, status_code=413)
+
+    if not origin_allowed(request):
+        log_event("request.rejected", request, reason="cross_origin", path=request.url.path)
+        return JSONResponse({"detail": "İstek reddedildi."}, status_code=403)
+
+    response = await call_next(request)
+    for name, value in SECURITY_HEADERS.items():
+        response.headers.setdefault(name, value)
+    if is_https(request):
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    return response
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse({"detail": "Gönderilen veri geçersiz."}, status_code=422)
+
+
+@app.exception_handler(Exception)
+async def unhandled_error_handler(request: Request, exc: Exception):
+    logger.exception("unhandled error on %s %s", request.method, request.url.path)
+    return JSONResponse({"detail": "Beklenmeyen bir hata oluştu."}, status_code=500)
+
+
 class RefreshRequest(BaseModel):
-    keywords: str
-    location: str = "Turkey"
-    max_items_per_source: int = 10
+    keywords: str = Field(min_length=1, max_length=100)
+    location: str = Field("Turkey", max_length=100)
+    max_items_per_source: int = Field(10, ge=1, le=10)
 
 
 class RecommendRequest(BaseModel):
-    profile_text: str
-    top_n: int = 10
+    profile_text: str = Field(max_length=30_000)
+    top_n: int = Field(10, ge=1, le=50)
     include_expired: bool = False
-    location: str = ""
+    location: str = Field("", max_length=60)
 
 
 class CoverLetterRequest(BaseModel):
-    profile_text: str
-    job_title: str
-    company: str | None = None
-    job_description: str = ""
+    profile_text: str = Field(max_length=30_000)
+    job_title: str = Field(max_length=300)
+    company: str | None = Field(None, max_length=300)
+    job_description: str = Field("", max_length=30_000)
 
 
 class CoverLetterPdfRequest(BaseModel):
-    text: str
-    job_title: str | None = None
-    company: str | None = None
-    file_name: str = "on_yazi"
+    text: str = Field(max_length=10_000)
+    job_title: str | None = Field(None, max_length=300)
+    company: str | None = Field(None, max_length=300)
+    file_name: str = Field("on_yazi", max_length=120)
 
 
 class FavoriteRequest(BaseModel):
-    job_id: str
+    job_id: str = Field(min_length=1, max_length=200)
     favorite: bool
 
 
-@app.post("/refresh")
-def refresh(req: RefreshRequest):
+# Apify kredisi harcayan işlem: giriş zorunlu + kullanıcı başına ve genel sınır.
+@app.post("/refresh", dependencies=[Depends(rate_limit("refresh-ip", 6, 3600))])
+def refresh(request: Request, req: RefreshRequest, user: User | None = Depends(get_current_user)):
+    if not user:
+        raise HTTPException(401, "Yeni ilan çekmek için giriş yapmalısın.")
+    enforce_limit(request, f"refresh-user:{user.id}", 3, 3600, "refresh-user")
+    enforce_limit(request, "refresh-global", 12, 3600, "refresh-global")
+    log_event("refresh.run", request, user=user.id)
     inserted = refresh_jobs(req.keywords, req.location, req.max_items_per_source)
     return {"inserted": inserted}
 
 
-@app.post("/recommend")
+@app.post("/recommend", dependencies=[Depends(rate_limit("recommend", 40, 60))])
 def recommend(req: RecommendRequest, user: User | None = Depends(get_current_user)):
     results = recommend_jobs(req.profile_text, req.top_n, req.include_expired, req.location)
     favorite_ids = get_favorite_ids(user.id) if user else set()
@@ -93,7 +153,7 @@ def recommend(req: RecommendRequest, user: User | None = Depends(get_current_use
     ]
 
 
-@app.post("/favorite")
+@app.post("/favorite", dependencies=[Depends(rate_limit("favorite", 120, 60))])
 def favorite(req: FavoriteRequest, user: User | None = Depends(get_current_user)):
     if not user:
         raise HTTPException(401, "Favorilemek için giriş yapmalısın.")
@@ -124,7 +184,7 @@ def favorites(user: User | None = Depends(get_current_user)):
     ]
 
 
-@app.post("/cover-letter")
+@app.post("/cover-letter", dependencies=[Depends(rate_limit("cover-letter", 12, 600))])
 def cover_letter(req: CoverLetterRequest):
     try:
         text = generate_cover_letter(
@@ -136,7 +196,7 @@ def cover_letter(req: CoverLetterRequest):
     return {"text": text, "file_name": file_name}
 
 
-@app.post("/cover-letter-pdf")
+@app.post("/cover-letter-pdf", dependencies=[Depends(rate_limit("cover-letter-pdf", 30, 600))])
 def cover_letter_pdf(req: CoverLetterPdfRequest):
     pdf = FPDF()
     pdf.add_page()
@@ -168,23 +228,20 @@ def cover_letter_pdf(req: CoverLetterPdfRequest):
     )
 
 
-@app.post("/extract-text")
-async def extract_text(file: UploadFile = File(...)):
-    contents = await file.read()
-    with pdfplumber.open(io.BytesIO(contents)) as pdf:
-        text = "\n".join(page.extract_text() or "" for page in pdf.pages)
-    return {"text": text}
+@app.post("/extract-text", dependencies=[Depends(rate_limit("extract-text", 30, 600))])
+async def extract_text(request: Request, file: UploadFile = File(...)):
+    return {"text": await read_pdf_text(file, request)}
 
 
-@app.post("/cv-review", response_model=CVReview)
-async def cv_review(file: UploadFile = File(...)):
-    contents = await file.read()
-    with pdfplumber.open(io.BytesIO(contents)) as pdf:
-        text = "\n".join(page.extract_text() or "" for page in pdf.pages)
-    if not text.strip():
-        raise HTTPException(400, "PDF okunamadı, dosyayı kontrol et.")
+@app.post(
+    "/cv-review",
+    response_model=CVReview,
+    dependencies=[Depends(rate_limit("cv-review", 8, 600))],
+)
+async def cv_review(request: Request, file: UploadFile = File(...)):
+    text = await read_pdf_text(file, request)
     try:
-        return review_cv(text)
+        return await run_in_threadpool(review_cv, text)
     except ServerError:
         raise HTTPException(503, "CV analiz servisi şu an yoğun, lütfen biraz sonra tekrar dene.")
 

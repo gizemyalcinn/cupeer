@@ -17,6 +17,8 @@ def verify_password(password: str, password_hash: str) -> bool:
 
 
 def login_user(request: Request, user: User) -> None:
+    # Eski oturum verisini (ör. OAuth state) taşımamak için sıfırdan başlat.
+    request.session.clear()
     request.session["user_id"] = user.id
 
 
