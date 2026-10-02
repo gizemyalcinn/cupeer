@@ -1,4 +1,5 @@
 import logging
+import mimetypes
 import os
 from datetime import datetime
 from urllib.parse import quote
@@ -6,6 +7,9 @@ from urllib.parse import quote
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Sistemin MIME tablosunda woff2 olmayabilir; yazı tipleri doğru türle servis edilsin.
+mimetypes.add_type("font/woff2", ".woff2")
 
 from fastapi import FastAPI, UploadFile, File, Request, Response, Depends, HTTPException
 from fastapi.concurrency import run_in_threadpool

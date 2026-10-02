@@ -111,3 +111,8 @@ def test_rate_limit_returns_429_with_retry_after():
 def test_delete_account_requires_login():
     response = client.post("/auth/delete-account", json={"confirm_email": "a@b.co"})
     assert response.status_code == 401
+
+
+def test_csp_allows_no_third_party_hosts():
+    csp = client.get("/").headers["content-security-policy"]
+    assert "http" not in csp
