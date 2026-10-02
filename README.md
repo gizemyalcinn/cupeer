@@ -24,7 +24,7 @@ listings. The CV text is extracted on the server and is not stored.
 
 ![Uploading a CV and choosing a country filter](docs/screenshots/upload.png)
 
-![Ranked results with cover letter settings](docs/screenshots/results.jpg)
+![Ranked results with cover letter settings](docs/screenshots/results.png)
 
 - **Semantic matching.** Your CV and every listing are embedded with Gemini's
   multilingual embedding model, so a Turkish CV can match an English listing.
