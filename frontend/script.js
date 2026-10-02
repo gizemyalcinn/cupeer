@@ -632,6 +632,10 @@ favoritesFilter.addEventListener("click", (e) => {
 
 function renderFavorites() {
   renderFavoriteFilter();
+  // Liste boşken tek bir açıklama yeter; alt başlık yalnızca içerik varken görünür.
+  document
+    .getElementById("favorites-subtitle")
+    .classList.toggle("hidden-field", !currentUser || favJobs.length === 0);
   if (!currentUser) {
     favoritesList.innerHTML =
       '<p class="empty-state">Hazineni saklamak için önce kapıdan içeri gir (giriş yap).</p>';
