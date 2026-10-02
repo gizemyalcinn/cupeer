@@ -19,6 +19,11 @@ used in the screenshots is a fictional sample.
 
 ## What it does
 
+Upload a CV (PDF), optionally pick a country, and press "Öner" to get ranked
+listings. The CV text is extracted on the server and is not stored.
+
+![Uploading a CV and choosing a country filter](docs/screenshots/upload.png)
+
 ![Ranked results with cover letter settings](docs/screenshots/results.jpg)
 
 - **Semantic matching.** Your CV and every listing are embedded with Gemini's
