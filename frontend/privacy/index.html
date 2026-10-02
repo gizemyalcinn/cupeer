@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gizlilik Politikası – Cupeer</title>
+    <meta
+      name="description"
+      content="Cupeer hangi verileri saklıyor, CV'n nereye gönderiliyor, hangi çerezler kullanılıyor: kısa ve açık anlatım."
+    />
+    <meta name="theme-color" content="#211510" />
+    <link rel="canonical" href="https://cupeer.onrender.com/privacy/" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;0,700;1,400&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body style="padding-top: 0">
+    <header class="legal-header">
+      <a href="/" class="brand"><span class="gradient-text">Cup</span>eer</a>
+      <a href="/" class="back">← Ana sayfa</a>
+    </header>
+
+    <main class="legal">
+      <h1>Gizlilik Politikası</h1>
+      <p class="updated">Son güncelleme: 2 Ekim 2026</p>
+
+      <p>
+        Cupeer kişisel bir portföy projesidir. Aşağıda hangi verilerin
+        işlendiğini, nereye gittiğini ve nasıl silinebileceğini sade bir dille
+        anlatıyorum.
+      </p>
+
+      <h2>Hesap açmadan kullanım</h2>
+      <p>
+        İlan arama, CV'ne göre öneri alma, ön yazı ve CV analizi için hesap
+        gerekmez. Hesap yalnızca favori ilanları kaydetmek içindir.
+      </p>
+
+      <h2>CV'n</h2>
+      <ul>
+        <li>
+          Yüklediğin PDF, metnini çıkarmak için sunucuda geçici olarak
+          işlenir. <strong>Dosya ve metin veritabanına ya da diske kaydedilmez.</strong>
+        </li>
+        <li>
+          CV metni üç iş için Google'ın <strong>Gemini API</strong>'sine
+          gönderilir: ilan eşleştirme, ön yazı oluşturma ve CV analizi. Ön
+          yazıda seçtiğin ilanın metni de gönderilir.
+        </li>
+      </ul>
+      <p class="note">
+        Google'ın Gemini API koşullarına göre ücretsiz kullanımda gönderilen
+        içerik Google tarafından ürünlerini geliştirmek için kullanılabilir
+        (<a
+          href="https://ai.google.dev/gemini-api/terms"
+          target="_blank"
+          rel="noopener"
+          >Google'ın koşulları</a
+        >). Bu yüzden telefon numarası, açık adres gibi bilgilerini çıkardığın
+        bir CV sürümü yüklemeni öneririm.
+      </p>
+
+      <h2>Hesap açarsan sakladıklarım</h2>
+      <ul>
+        <li>E-posta adresin ve (girdiysen) adın</li>
+        <li>
+          Şifren, yalnızca geri döndürülemez (bcrypt) özet olarak. Düz şifre
+          hiçbir yerde saklanmaz.
+        </li>
+        <li>Google ile girdiysen Google hesap kimliğin (ID)</li>
+        <li>Favorilediğin ilanların listesi</li>
+        <li>
+          Başarısız giriş denemeleri (e-posta ve zaman). Kaba kuvvet
+          saldırılarını engellemek içindir, başarılı girişte silinir.
+        </li>
+      </ul>
+
+      <h2>Çerezler</h2>
+      <p>
+        Tek bir çerez kullanıyorum: giriş yaptığında oluşan, imzalı oturum
+        çerezi (30 gün). Reklam, analitik ya da takip çerezi yok; bu yüzden
+        çerez onay bandı da yok. "Google ile devam et" ekranında Google kendi
+        çerezlerini kullanabilir.
+      </p>
+
+      <h2>Üçüncü taraflar</h2>
+      <ul>
+        <li>
+          <strong>Render</strong>: sitenin ve veritabanının barındırıldığı
+          yer (Frankfurt, AB).
+        </li>
+        <li>
+          <strong>Google</strong>: Gemini API, "Google ile giriş" ve yazı
+          tipi (Google Fonts). Sayfa açılırken tarayıcın Google'ın sunucusuna
+          bağlanır ve IP adresin görünür.
+        </li>
+        <li>
+          <strong>Apify</strong>: iş ilanlarını toplamak için kullanılır.
+          Yalnızca arama kelimesi ve konum gönderilir, CV'n Apify'a gitmez.
+        </li>
+      </ul>
+
+      <h2>Verilerini silme</h2>
+      <p>
+        Şu an arayüzde hesap silme düğmesi yok. Hesabının ve favorilerinin
+        silinmesini istersen
+        <a
+          href="https://github.com/gizemyalcinn/cupeer/issues"
+          target="_blank"
+          rel="noopener"
+          >GitHub'dan bir issue açarak</a
+        >
+        bana ulaşabilirsin. Issue herkese açık olduğu için içine e-postanı ya
+        da başka kişisel bilgi yazma, nasıl doğrulayacağımızı orada
+        konuşuruz.
+      </p>
+
+      <h2>Değişiklikler</h2>
+      <p>
+        Bu sayfa güncellenirse yukarıdaki tarih de değişir. Proje bir demo
+        olduğu için veritabanı önceden haber verilmeden sıfırlanabilir;
+        ayrıntı için <a href="/terms/">Kullanım Koşulları</a>'na bak.
+      </p>
+    </main>
+
+    <footer>
+      <span class="brand"><span class="gradient-text">Cup</span>eer</span>
+      <nav class="footer-links" aria-label="Alt bağlantılar">
+        <a href="/privacy/">Gizlilik</a>
+        <a href="/terms/">Koşullar</a>
+        <a href="https://github.com/gizemyalcinn/cupeer" target="_blank" rel="noopener">GitHub</a>
+      </nav>
+    </footer>
+  </body>
+</html>

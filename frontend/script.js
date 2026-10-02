@@ -242,6 +242,7 @@ refreshBtn.addEventListener("click", async () => {
   const location = document.getElementById("scrape-location").value;
 
   refreshBtn.disabled = true;
+  refreshBtn.classList.add("is-loading");
   refreshStatus.textContent = "Taranıyor, birkaç dakika sürebilir...";
 
   try {
@@ -258,6 +259,7 @@ refreshBtn.addEventListener("click", async () => {
   }
 
   refreshBtn.disabled = false;
+  refreshBtn.classList.remove("is-loading");
 });
 
 // --- Favoriler: paylaşılan durum ---
@@ -374,6 +376,8 @@ recommendBtn.addEventListener("click", async () => {
   }
 
   resultsList.innerHTML = "<p>Diyarlar taranıyor...</p>";
+  recommendBtn.disabled = true;
+  recommendBtn.classList.add("is-loading");
 
   const location = document.getElementById("recommend-location").value;
 
@@ -390,6 +394,9 @@ recommendBtn.addEventListener("click", async () => {
   } catch (err) {
     resultsList.innerHTML =
       "<p>Bir hata oluştu, sunucunun çalıştığından emin ol.</p>";
+  } finally {
+    recommendBtn.disabled = false;
+    recommendBtn.classList.remove("is-loading");
   }
 });
 
@@ -441,6 +448,7 @@ async function handleListClick(e) {
     const profileText = document.getElementById("profile-text").value;
 
     e.target.disabled = true;
+    e.target.classList.add("is-loading");
     outputEl.innerHTML = "";
     outputEl.textContent = "Ön yazı oluşturuluyor...";
 
@@ -475,6 +483,7 @@ async function handleListClick(e) {
     }
 
     e.target.disabled = false;
+    e.target.classList.remove("is-loading");
     return;
   }
 
@@ -562,6 +571,7 @@ cvReviewBtn.addEventListener("click", async () => {
   formData.append("file", file);
 
   cvReviewBtn.disabled = true;
+  cvReviewBtn.classList.add("is-loading");
   cvReviewStatus.textContent = "CV'n inceleniyor, birkaç saniye sürebilir...";
   cvReviewResult.classList.add("hidden-field");
 
@@ -613,6 +623,7 @@ cvReviewBtn.addEventListener("click", async () => {
   }
 
   cvReviewBtn.disabled = false;
+  cvReviewBtn.classList.remove("is-loading");
 });
 
 loadCurrentUser().then(() => {
