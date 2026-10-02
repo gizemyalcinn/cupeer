@@ -2,7 +2,11 @@
 <html lang="tr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <meta name="color-scheme" content="dark" />
     <title>Cupeer – CV'ne uygun iş ilanlarını bul</title>
     <meta
       name="description"
@@ -14,6 +18,8 @@
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-title" content="Cupeer" />
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Cupeer" />
@@ -62,7 +68,7 @@
       <div class="nav-auth">
         <button type="button" id="auth-open-btn" class="btn btn-dark btn-small">Giriş Yap</button>
         <div id="user-menu" class="user-menu hidden-field">
-          <span id="user-name-label"></span>
+          <button type="button" id="user-name-label" class="user-name-btn" aria-haspopup="dialog" title="Hesabım"></button>
           <button type="button" id="logout-btn" class="btn btn-outline btn-small">Çıkış Yap</button>
         </div>
         <button type="button" id="nav-toggle-btn" class="nav-toggle" aria-label="Menüyü aç" aria-expanded="false">
@@ -73,9 +79,9 @@
       </div>
     </nav>
 
-    <div id="auth-modal" class="modal-overlay hidden-field">
+    <div id="auth-modal" class="modal-overlay hidden-field" role="dialog" aria-modal="true" aria-label="Giriş yap veya kayıt ol">
       <div class="modal-card">
-        <button type="button" id="auth-modal-close" class="modal-close" aria-label="Kapat">✕</button>
+        <button type="button" class="modal-close" data-close-modal aria-label="Kapat">✕</button>
 
         <div class="auth-tabs">
           <button type="button" class="auth-tab is-active" data-tab="login">Giriş Yap</button>
@@ -83,20 +89,20 @@
         </div>
 
         <form id="login-form" class="auth-form">
-          <label>E-posta</label>
+          <label for="login-email">E-posta</label>
           <input type="email" id="login-email" required autocomplete="email" />
-          <label>Şifre</label>
+          <label for="login-password">Şifre</label>
           <input type="password" id="login-password" required autocomplete="current-password" />
           <p class="auth-error" id="login-error" role="alert"></p>
           <button type="submit" class="btn btn-primary">Giriş Yap</button>
         </form>
 
         <form id="register-form" class="auth-form hidden-field">
-          <label>Ad (opsiyonel)</label>
+          <label for="register-name">Ad (opsiyonel)</label>
           <input type="text" id="register-name" autocomplete="name" />
-          <label>E-posta</label>
+          <label for="register-email">E-posta</label>
           <input type="email" id="register-email" required autocomplete="email" />
-          <label>Şifre</label>
+          <label for="register-password">Şifre</label>
           <input type="password" id="register-password" required minlength="8" autocomplete="new-password" />
           <p class="auth-error" id="register-error" role="alert"></p>
           <button type="submit" class="btn btn-primary">Kayıt Ol</button>
@@ -113,6 +119,35 @@
           </svg>
           Google ile devam et
         </a>
+      </div>
+    </div>
+
+    <div id="account-modal" class="modal-overlay hidden-field" role="dialog" aria-modal="true" aria-labelledby="account-title">
+      <div class="modal-card">
+        <button type="button" class="modal-close" data-close-modal aria-label="Kapat">✕</button>
+        <h2 id="account-title" class="modal-title">Hesabım</h2>
+        <p id="account-email" class="account-email"></p>
+        <h3 class="modal-subtitle">Hesabı sil</h3>
+        <p class="modal-text">
+          E-postan, favorilerin ve giriş kayıtların kalıcı olarak silinir. Bu işlem geri alınamaz.
+        </p>
+        <form id="delete-form" class="auth-form">
+          <label for="delete-confirm">Onaylamak için e-posta adresini yaz</label>
+          <input type="email" id="delete-confirm" autocomplete="off" required />
+          <p class="auth-error" id="delete-error" role="alert"></p>
+          <button type="submit" id="delete-btn" class="btn btn-danger" disabled>Hesabımı kalıcı olarak sil</button>
+        </form>
+      </div>
+    </div>
+
+    <div id="confirm-modal" class="modal-overlay hidden-field" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-text">
+      <div class="modal-card">
+        <h2 id="confirm-title" class="modal-title"></h2>
+        <p id="confirm-text" class="modal-text"></p>
+        <div class="modal-actions">
+          <button type="button" id="confirm-cancel" class="btn btn-outline btn-small">Vazgeç</button>
+          <button type="button" id="confirm-ok" class="btn btn-primary btn-small">Devam et</button>
+        </div>
       </div>
     </div>
 
@@ -313,7 +348,11 @@
 
     <section class="results reveal">
       <h2>Sonuçlar</h2>
-      <div id="results-list"></div>
+      <div id="results-list">
+        <p class="empty-state">
+          CV'ni yükleyip "Öner"e bastığında sana uygun ilanlar burada, uyum yüzdesiyle sıralı listelenir.
+        </p>
+      </div>
     </section>
 
     <section id="cv-review" class="tool reveal">
@@ -398,7 +437,7 @@
       </nav>
     </footer>
 
-    <div id="toast" class="toast hidden-field"></div>
+    <div id="toast" class="toast hidden-field" role="status" aria-live="polite"></div>
 
     <script src="script.js"></script>
   </body>

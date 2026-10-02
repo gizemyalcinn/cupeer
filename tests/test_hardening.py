@@ -106,3 +106,8 @@ def test_rate_limit_returns_429_with_retry_after():
     response = client.post("/cv-review", files={"file": ("cv.pdf", b"nope", "application/pdf")})
     assert response.status_code == 429
     assert int(response.headers["retry-after"]) > 0
+
+
+def test_delete_account_requires_login():
+    response = client.post("/auth/delete-account", json={"confirm_email": "a@b.co"})
+    assert response.status_code == 401

@@ -194,6 +194,20 @@ def link_google_id(user_id: str, google_id: str) -> None:
     conn.close()
 
 
+def delete_user(user_id: str) -> None:
+    """Kullanıcıyı ve ona bağlı tüm kayıtları (favoriler, giriş denemeleri) tek işlemde siler."""
+    conn = _connect()
+    with conn.cursor() as cur:
+        cur.execute("SELECT email FROM users WHERE id = %s", (user_id,))
+        row = cur.fetchone()
+        cur.execute("DELETE FROM favorites WHERE user_id = %s", (user_id,))
+        if row and row[0]:
+            cur.execute("DELETE FROM login_attempts WHERE email = %s", (row[0],))
+        cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
+    conn.commit()
+    conn.close()
+
+
 # --- Favoriler (kullanıcıya özel) ---
 
 def add_favorite(user_id: str, job_id: str) -> None:

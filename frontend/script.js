@@ -17,14 +17,64 @@ function safeUrl(url) {
 
 class ApiError extends Error {}
 
+const SLOW_SERVER_MESSAGE =
+  "Sunucu uykudan uyanıyor olabilir (ücretsiz plan), ilk istek 30-50 saniye sürebilir…";
+
+// fetch + zaman aşımı. Ağ hatası ve zaman aşımı, kullanıcıya okunur bir ApiError olarak döner.
+async function apiFetch(path, options = {}, { timeout = 30000, slowAfter = 6000, onSlow } = {}) {
+  const controller = new AbortController();
+  const killTimer = setTimeout(() => controller.abort(), timeout);
+  const slowTimer = onSlow ? setTimeout(onSlow, slowAfter) : null;
+  try {
+    return await fetch(`${API_URL}${path}`, {
+      credentials: "include",
+      ...options,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err.name === "AbortError") {
+      throw new ApiError("Sunucu zamanında yanıt vermedi. Bir dakika sonra tekrar dene.");
+    }
+    throw new ApiError(
+      navigator.onLine === false
+        ? "İnternet bağlantın yok gibi görünüyor."
+        : "Sunucuya ulaşılamadı. Bağlantını kontrol edip tekrar dene.",
+    );
+  } finally {
+    clearTimeout(killTimer);
+    clearTimeout(slowTimer);
+  }
+}
+
+function jsonRequest(method, payload) {
+  return {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  };
+}
+
 async function apiError(response, fallback) {
   try {
     const body = await response.json();
     if (typeof body.detail === "string") return body.detail;
   } catch {
-    // gövde JSON değilse varsayılan mesaja düş
+    // gövde JSON değilse durum koduna göre mesaj ver
   }
+  if (response.status === 429) return "Çok sık denedin, biraz bekleyip tekrar dene.";
+  if (response.status >= 500) return "Sunucu şu an yanıt veremiyor. Birkaç dakika sonra tekrar dene.";
   return fallback;
+}
+
+function errorMessage(err, fallback) {
+  return err instanceof ApiError ? err.message : fallback;
+}
+
+// Destekleyen cihazlarda kısa titreşim; hareket azaltma tercihine saygı gösterir.
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+function haptic(pattern = 12) {
+  if (reducedMotion.matches || typeof navigator.vibrate !== "function") return;
+  navigator.vibrate(pattern);
 }
 
 const SOURCE_LABELS = {
@@ -44,17 +94,127 @@ const HEART_ICON =
 const toastEl = document.getElementById("toast");
 let toastTimeout;
 
-function showToast(message, duration = 2500) {
+function hideToast() {
+  clearTimeout(toastTimeout);
+  toastEl.classList.remove("is-visible");
+  toastTimeout = setTimeout(() => toastEl.classList.add("hidden-field"), 250);
+}
+
+function showToast(message, { duration = 2500, action, error = false } = {}) {
   clearTimeout(toastTimeout);
   toastEl.textContent = message;
+  toastEl.classList.toggle("is-error", error);
+  toastEl.classList.toggle("has-action", Boolean(action));
+  if (action) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "toast-action";
+    btn.textContent = action.label;
+    btn.addEventListener("click", () => {
+      hideToast();
+      action.onClick();
+    });
+    toastEl.appendChild(btn);
+  }
+  if (error) haptic([30, 40, 30]);
   toastEl.classList.remove("hidden-field");
   void toastEl.offsetWidth; // reflow, geçiş animasyonunun çalışması için
   toastEl.classList.add("is-visible");
 
-  toastTimeout = setTimeout(() => {
-    toastEl.classList.remove("is-visible");
-    setTimeout(() => toastEl.classList.add("hidden-field"), 250);
-  }, duration);
+  toastTimeout = setTimeout(hideToast, action ? Math.max(duration, 5000) : duration);
+}
+
+// --- Modal yöneticisi: Escape, geri tuşu, odak tuzağı ---
+const modalStack = [];
+let skipPopstate = 0;
+
+function focusableIn(el) {
+  return [...el.querySelectorAll('a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])')].filter(
+    (node) => !node.disabled && node.offsetParent !== null,
+  );
+}
+
+function openModal(el, { focus, onClose } = {}) {
+  if (modalStack.some((m) => m.el === el)) return;
+  modalStack.push({ el, onClose, opener: document.activeElement });
+  el.classList.remove("hidden-field");
+  document.body.classList.add("modal-open");
+  history.pushState({ modal: el.id }, "");
+  const items = focusableIn(el);
+  (focus || items.find((n) => n.matches("input, textarea")) || items[0] || el).focus();
+}
+
+function closeModal(el, { fromHistory = false } = {}) {
+  const index = modalStack.findIndex((m) => m.el === el);
+  if (index === -1) return;
+  const [entry] = modalStack.splice(index, 1);
+  el.classList.add("hidden-field");
+  if (modalStack.length === 0) document.body.classList.remove("modal-open");
+  if (!fromHistory && history.state && history.state.modal === el.id) {
+    skipPopstate += 1;
+    history.back();
+  }
+  if (entry.onClose) entry.onClose();
+  if (entry.opener && document.contains(entry.opener)) entry.opener.focus();
+}
+
+window.addEventListener("popstate", () => {
+  if (skipPopstate > 0) {
+    skipPopstate -= 1;
+    return;
+  }
+  const top = modalStack[modalStack.length - 1];
+  if (top) closeModal(top.el, { fromHistory: true });
+});
+
+document.addEventListener("keydown", (e) => {
+  const top = modalStack[modalStack.length - 1];
+  if (e.key === "Escape") {
+    if (top) closeModal(top.el);
+    else closeNavMenu();
+    return;
+  }
+  if (e.key === "Tab" && top) {
+    const items = focusableIn(top.el);
+    if (items.length === 0) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+});
+
+document.querySelectorAll(".modal-overlay").forEach((overlay) => {
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay || e.target.closest("[data-close-modal]")) closeModal(overlay);
+  });
+});
+
+// Yıkıcı ya da maliyetli işlemlerden önce onay iste; true/false döner.
+const confirmModal = document.getElementById("confirm-modal");
+const confirmTitle = document.getElementById("confirm-title");
+const confirmText = document.getElementById("confirm-text");
+const confirmOk = document.getElementById("confirm-ok");
+const confirmCancel = document.getElementById("confirm-cancel");
+
+function confirmDialog({ title, message, okText = "Devam et" }) {
+  return new Promise((resolve) => {
+    let answer = false;
+    confirmTitle.textContent = title;
+    confirmText.textContent = message;
+    confirmOk.textContent = okText;
+    confirmOk.onclick = () => {
+      answer = true;
+      closeModal(confirmModal);
+    };
+    confirmCancel.onclick = () => closeModal(confirmModal);
+    openModal(confirmModal, { focus: confirmCancel, onClose: () => resolve(answer) });
+  });
 }
 
 // --- Kullanıcı oturumu ---
@@ -62,7 +222,6 @@ let currentUser = null;
 
 const authModal = document.getElementById("auth-modal");
 const authOpenBtn = document.getElementById("auth-open-btn");
-const authModalClose = document.getElementById("auth-modal-close");
 const userMenu = document.getElementById("user-menu");
 const userNameLabel = document.getElementById("user-name-label");
 const logoutBtn = document.getElementById("logout-btn");
@@ -74,21 +233,20 @@ const registerError = document.getElementById("register-error");
 function openAuthModal() {
   loginForm.reset();
   registerForm.reset();
-  authModal.classList.remove("hidden-field");
+  openModal(authModal, {
+    onClose: () => {
+      loginForm.reset();
+      registerForm.reset();
+      loginError.textContent = "";
+      registerError.textContent = "";
+    },
+  });
 }
 function closeAuthModal() {
-  authModal.classList.add("hidden-field");
-  loginForm.reset();
-  registerForm.reset();
-  loginError.textContent = "";
-  registerError.textContent = "";
+  closeModal(authModal);
 }
 
 authOpenBtn.addEventListener("click", openAuthModal);
-authModalClose.addEventListener("click", closeAuthModal);
-authModal.addEventListener("click", (e) => {
-  if (e.target === authModal) closeAuthModal();
-});
 
 // --- Mobil hamburger menü ---
 const navToggleBtn = document.getElementById("nav-toggle-btn");
@@ -133,7 +291,7 @@ function updateAuthUI() {
 
 async function loadCurrentUser() {
   try {
-    const response = await fetch(`${API_URL}/auth/me`, { credentials: "include" });
+    const response = await apiFetch("/auth/me", {}, { timeout: 20000 });
     const data = await response.json();
     currentUser = data.logged_in ? data : null;
   } catch (err) {
@@ -149,24 +307,20 @@ loginForm.addEventListener("submit", async (e) => {
   const password = document.getElementById("login-password").value;
 
   try {
-    const response = await fetch(`${API_URL}/auth/login`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+    const response = await apiFetch("/auth/login", jsonRequest("POST", { email, password }), {
+      onSlow: () => (loginError.textContent = SLOW_SERVER_MESSAGE),
     });
-    const data = await response.json();
     if (!response.ok) {
-      loginError.textContent = data.detail || "Giriş yapılamadı.";
+      loginError.textContent = await apiError(response, "Giriş yapılamadı.");
       return;
     }
-    currentUser = data;
+    currentUser = await response.json();
     updateAuthUI();
     closeAuthModal();
     loadFavorites();
     showToast(`Tekrar hoş geldin, ${currentUser.name || currentUser.email}!`);
   } catch (err) {
-    loginError.textContent = "Bir hata oluştu, sunucuyu kontrol et.";
+    loginError.textContent = errorMessage(err, "Giriş yapılamadı, tekrar dene.");
   }
 });
 
@@ -178,40 +332,85 @@ registerForm.addEventListener("submit", async (e) => {
   const password = document.getElementById("register-password").value;
 
   try {
-    const response = await fetch(`${API_URL}/auth/register`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
+    const response = await apiFetch("/auth/register", jsonRequest("POST", { name, email, password }), {
+      onSlow: () => (registerError.textContent = SLOW_SERVER_MESSAGE),
     });
-    const data = await response.json();
     if (!response.ok) {
-      registerError.textContent = data.detail || "Kayıt oluşturulamadı.";
+      registerError.textContent = await apiError(response, "Kayıt oluşturulamadı.");
       return;
     }
-    currentUser = data;
+    currentUser = await response.json();
     updateAuthUI();
     closeAuthModal();
     loadFavorites();
     showToast(`Hoş geldin, ${currentUser.name || currentUser.email}!`);
   } catch (err) {
-    registerError.textContent = "Bir hata oluştu, sunucuyu kontrol et.";
+    registerError.textContent = errorMessage(err, "Kayıt oluşturulamadı, tekrar dene.");
   }
 });
 
-logoutBtn.addEventListener("click", async () => {
-  try {
-    await fetch(`${API_URL}/auth/logout`, { method: "POST", credentials: "include" });
-  } catch (err) {
-    // yok say
-  }
+function resetSession() {
   currentUser = null;
   favJobs = [];
   favoriteIds.clear();
   updateAuthUI();
   renderFavorites();
   syncFavoriteButtons();
-  showToast("Çıkış yaptınız.");
+}
+
+logoutBtn.addEventListener("click", async () => {
+  try {
+    await apiFetch("/auth/logout", { method: "POST" }, { timeout: 10000 });
+  } catch (err) {
+    // sunucuya ulaşılamasa da bu cihazdaki oturum görünümünü kapat
+  }
+  resetSession();
+  showToast("Çıkış yaptın.");
+});
+
+// --- Hesabım / hesabı sil ---
+const accountModal = document.getElementById("account-modal");
+const accountEmail = document.getElementById("account-email");
+const deleteForm = document.getElementById("delete-form");
+const deleteConfirmInput = document.getElementById("delete-confirm");
+const deleteBtn = document.getElementById("delete-btn");
+const deleteError = document.getElementById("delete-error");
+
+userNameLabel.addEventListener("click", () => {
+  if (!currentUser) return;
+  accountEmail.textContent = currentUser.email || currentUser.name || "";
+  deleteForm.reset();
+  deleteBtn.disabled = true;
+  deleteError.textContent = "";
+  openModal(accountModal);
+});
+
+deleteConfirmInput.addEventListener("input", () => {
+  const typed = deleteConfirmInput.value.trim().toLowerCase();
+  deleteBtn.disabled = !currentUser || typed !== (currentUser.email || "").toLowerCase();
+});
+
+deleteForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  deleteError.textContent = "";
+  deleteBtn.disabled = true;
+  deleteBtn.classList.add("is-loading");
+  try {
+    const response = await apiFetch("/auth/delete-account", jsonRequest("POST", { confirm_email: deleteConfirmInput.value }));
+    if (!response.ok) {
+      deleteError.textContent = await apiError(response, "Hesap silinemedi, tekrar dene.");
+      deleteBtn.disabled = false;
+      return;
+    }
+    closeModal(accountModal);
+    resetSession();
+    showToast("Hesabın ve favorilerin silindi. Yolun açık olsun, yolcu.", { duration: 5000 });
+  } catch (err) {
+    deleteError.textContent = errorMessage(err, "Hesap silinemedi, tekrar dene.");
+    deleteBtn.disabled = false;
+  } finally {
+    deleteBtn.classList.remove("is-loading");
+  }
 });
 
 // --- Kaydırınca beliren (scroll reveal) efekt ---
@@ -247,19 +446,20 @@ cvFileInput.addEventListener("change", async () => {
   cvStatus.textContent = "PDF okunuyor...";
 
   try {
-    const response = await fetch(`${API_URL}/extract-text`, {
-      method: "POST",
-      body: formData,
-    });
+    const response = await apiFetch(
+      "/extract-text",
+      { method: "POST", body: formData },
+      { timeout: 45000, onSlow: () => (cvStatus.textContent = SLOW_SERVER_MESSAGE) },
+    );
     if (!response.ok) {
-      throw new ApiError(await apiError(response, "PDF okunamadı, dosyayı kontrol et."));
+      throw new ApiError(await apiError(response, "PDF okunamadı. Metin içeren bir PDF olduğundan emin ol."));
     }
     const data = await response.json();
     profileTextArea.value = data.text;
     cvStatus.textContent = `✓ CV okundu (${data.text.length} karakter)`;
   } catch (err) {
     profileTextArea.value = "";
-    cvStatus.textContent = err instanceof ApiError ? err.message : "PDF okunamadı, dosyayı kontrol et.";
+    cvStatus.textContent = errorMessage(err, "PDF okunamadı. Metin içeren bir PDF olduğundan emin ol.");
   }
 });
 
@@ -268,27 +468,49 @@ const refreshBtn = document.getElementById("refresh-btn");
 const refreshStatus = document.getElementById("refresh-status");
 
 refreshBtn.addEventListener("click", async () => {
-  const keywords = document.getElementById("keywords").value;
-  const location = document.getElementById("scrape-location").value;
+  if (!currentUser) {
+    showToast("İlan çekmek için önce giriş yapmalısın.");
+    openAuthModal();
+    return;
+  }
+
+  const keywordsInput = document.getElementById("keywords");
+  const keywords = keywordsInput.value.trim();
+  const location = document.getElementById("scrape-location").value.trim();
+  if (!keywords) {
+    refreshStatus.textContent = 'Önce bir anahtar kelime yaz, örneğin "data scientist".';
+    keywordsInput.focus();
+    return;
+  }
+
+  const ok = await confirmDialog({
+    title: "Yeni ilanlar çekilsin mi?",
+    message:
+      "Yedi platform canlı taranır ve ücretli bir servis kullanılır. Birkaç dakika sürer; saatte en fazla 3 kez yapabilirsin.",
+    okText: "Taramayı başlat",
+  });
+  if (!ok) return;
 
   refreshBtn.disabled = true;
   refreshBtn.classList.add("is-loading");
   refreshStatus.textContent = "Taranıyor, birkaç dakika sürebilir...";
 
   try {
-    const response = await fetch(`${API_URL}/refresh`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ keywords, location }),
+    const response = await apiFetch("/refresh", jsonRequest("POST", location ? { keywords, location } : { keywords }), {
+      timeout: 15 * 60 * 1000,
     });
     if (!response.ok) {
-      throw new ApiError(await apiError(response, "Bir hata oluştu, sunucunun çalıştığından emin ol."));
+      throw new ApiError(await apiError(response, "Tarama tamamlanamadı, birazdan tekrar dene."));
     }
     const data = await response.json();
-    refreshStatus.textContent = `${data.inserted} yeni ilan eklendi.`;
-  } catch (err) {
     refreshStatus.textContent =
-      err instanceof ApiError ? err.message : "Bir hata oluştu, sunucunun çalıştığından emin ol.";
+      data.inserted === 0
+        ? "Yeni ilan çıkmadı; bu aramadaki ilanların hepsi zaten kayıtlıydı."
+        : `${data.inserted} yeni ilan eklendi.`;
+    haptic(15);
+  } catch (err) {
+    refreshStatus.textContent = errorMessage(err, "Tarama tamamlanamadı, birazdan tekrar dene.");
+    haptic([30, 40, 30]);
   }
 
   refreshBtn.disabled = false;
@@ -302,7 +524,8 @@ const favoritesList = document.getElementById("favorites-list");
 
 async function loadFavorites() {
   try {
-    const response = await fetch(`${API_URL}/favorites`);
+    const response = await apiFetch("/favorites", {}, { timeout: 20000 });
+    if (!response.ok) return;
     favJobs = await response.json();
     favoriteIds.clear();
     favJobs.forEach((job) => favoriteIds.add(job.id));
@@ -312,30 +535,45 @@ async function loadFavorites() {
   }
 }
 
-async function toggleFavorite(jobId, makeFavorite) {
-  try {
-    await fetch(`${API_URL}/favorite`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ job_id: jobId, favorite: makeFavorite }),
-    });
-  } catch (err) {
-    // Ağ hatası olsa da yerel durumu güncellemeye devam ediyoruz.
-  }
-
+function setFavoriteLocal(jobId, makeFavorite, job) {
   if (makeFavorite) {
     favoriteIds.add(jobId);
-    const job = lastJobs.find((j) => j.id === jobId) || favJobs.find((j) => j.id === jobId);
-    if (job && !favJobs.some((j) => j.id === jobId)) {
-      favJobs = [{ ...job }, ...favJobs];
+    const source = job || lastJobs.find((j) => j.id === jobId) || favJobs.find((j) => j.id === jobId);
+    if (source && !favJobs.some((j) => j.id === jobId)) {
+      favJobs = [{ ...source }, ...favJobs];
     }
   } else {
     favoriteIds.delete(jobId);
     favJobs = favJobs.filter((j) => j.id !== jobId);
   }
-
   syncFavoriteButtons();
   renderFavorites();
+}
+
+// Önce arayüz güncellenir; sunucu reddederse eski haline döner ve kullanıcıya söylenir.
+async function toggleFavorite(jobId, makeFavorite) {
+  const job = lastJobs.find((j) => j.id === jobId) || favJobs.find((j) => j.id === jobId);
+  setFavoriteLocal(jobId, makeFavorite, job);
+
+  try {
+    const response = await apiFetch("/favorite", jsonRequest("POST", { job_id: jobId, favorite: makeFavorite }), {
+      timeout: 15000,
+    });
+    if (!response.ok) {
+      throw new ApiError(await apiError(response, "Favori kaydedilemedi, tekrar dene."));
+    }
+  } catch (err) {
+    setFavoriteLocal(jobId, !makeFavorite, job);
+    showToast(errorMessage(err, "Favori kaydedilemedi, tekrar dene."), { error: true });
+    return;
+  }
+
+  haptic(12);
+  if (!makeFavorite) {
+    showToast("Hazinenden çıkarıldı.", {
+      action: { label: "Geri al", onClick: () => toggleFavorite(jobId, true) },
+    });
+  }
 }
 
 function syncFavoriteButtons() {
@@ -361,7 +599,7 @@ function renderFavorites() {
 }
 
 // --- Ortak ilan kartı şablonu ---
-function jobCardHtml(job, { index, showScore = true } = {}) {
+function jobCardHtml(job, { index, showScore = true, enterDelay } = {}) {
   const isFav = favoriteIds.has(job.id);
   const scoreHtml =
     showScore && typeof job.score === "number"
@@ -374,7 +612,7 @@ function jobCardHtml(job, { index, showScore = true } = {}) {
   const coverLetterOutput = index !== undefined ? `<div class="cover-letter-output" id="cover-letter-${index}"></div>` : "";
 
   return `
-    <div class="job-card" data-job-id="${escapeHtml(job.id)}">
+    <div class="job-card${enterDelay !== undefined ? " card-enter" : ""}" data-job-id="${escapeHtml(job.id)}"${enterDelay !== undefined ? ` style="--enter-delay:${enterDelay}ms"` : ""}>
       <div class="job-top-row">
         <span class="job-title">${escapeHtml(job.title)}</span>
         <span class="job-tag">${escapeHtml(SOURCE_LABELS[job.source] || job.source)}</span>
@@ -404,47 +642,55 @@ let visibleCount = PAGE_SIZE;
 recommendBtn.addEventListener("click", async () => {
   const profileText = document.getElementById("profile-text").value;
   if (!profileText.trim()) {
-    resultsList.innerHTML = "<p>Önce bir CV dosyası yükle.</p>";
+    resultsList.innerHTML = '<p class="empty-state">Önce yukarıdan bir CV dosyası (PDF) yükle.</p>';
     return;
   }
 
-  resultsList.innerHTML = "<p>Diyarlar taranıyor...</p>";
+  resultsList.innerHTML = '<p class="empty-state">Diyarlar taranıyor...</p>';
   recommendBtn.disabled = true;
   recommendBtn.classList.add("is-loading");
 
   const location = document.getElementById("recommend-location").value;
 
   try {
-    const response = await fetch(`${API_URL}/recommend`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ profile_text: profileText, top_n: 50, location }),
+    const response = await apiFetch("/recommend", jsonRequest("POST", { profile_text: profileText, top_n: 50, location }), {
+      timeout: 90000,
+      onSlow: () => {
+        resultsList.innerHTML = `<p class="empty-state">${SLOW_SERVER_MESSAGE}</p>`;
+      },
     });
     if (!response.ok) {
-      throw new ApiError(await apiError(response, "Bir hata oluştu, sunucunun çalıştığından emin ol."));
+      throw new ApiError(await apiError(response, "Öneriler getirilemedi, tekrar dene."));
     }
     const jobs = await response.json();
     lastJobs = jobs;
     visibleCount = PAGE_SIZE;
-    renderResults();
+    renderResults(0);
   } catch (err) {
-    resultsList.innerHTML = `<p>${escapeHtml(err instanceof ApiError ? err.message : "Bir hata oluştu, sunucunun çalıştığından emin ol.")}</p>`;
+    resultsList.innerHTML = `<p class="empty-state" role="alert">${escapeHtml(errorMessage(err, "Öneriler getirilemedi, tekrar dene."))}</p>`;
   } finally {
     recommendBtn.disabled = false;
     recommendBtn.classList.remove("is-loading");
   }
 });
 
-function renderResults() {
+function renderResults(animateFrom = 0) {
   if (lastJobs.length === 0) {
-    resultsList.innerHTML = "<p>Bu diyarlarda uygun bir fırsat bulunamadı.</p>";
+    resultsList.innerHTML =
+      '<p class="empty-state">Bu CV için uygun ilan bulunamadı. Konumu boş bırakmayı ya da önce "Yenile" ile yeni ilan çekmeyi dene.</p>';
     return;
   }
 
   const visibleJobs = lastJobs.slice(0, visibleCount);
 
   const cardsHtml = visibleJobs
-    .map((job, index) => jobCardHtml(job, { index, showScore: true }))
+    .map((job, index) =>
+      jobCardHtml(job, {
+        index,
+        showScore: true,
+        enterDelay: index >= animateFrom ? Math.min(index - animateFrom, 10) * 45 : undefined,
+      }),
+    )
     .join("");
 
   const remaining = lastJobs.length - visibleCount;
@@ -461,6 +707,7 @@ async function handleListClick(e) {
   const favoriteBtn = e.target.closest(".favorite-btn");
   if (favoriteBtn) {
     if (!currentUser) {
+      showToast("Favorilere eklemek için önce giriş yapmalısın.");
       openAuthModal();
       return;
     }
@@ -471,8 +718,9 @@ async function handleListClick(e) {
   }
 
   if (e.target.id === "load-more-btn") {
+    const previous = visibleCount;
     visibleCount += PAGE_SIZE;
-    renderResults();
+    renderResults(previous);
     return;
   }
 
@@ -488,18 +736,18 @@ async function handleListClick(e) {
     outputEl.textContent = "Ön yazı oluşturuluyor...";
 
     try {
-      const response = await fetch(`${API_URL}/cover-letter`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const response = await apiFetch(
+        "/cover-letter",
+        jsonRequest("POST", {
           profile_text: profileText,
           job_title: job.title,
           company: job.company,
           job_description: (job.description || "").slice(0, 25000),
         }),
-      });
+        { timeout: 60000, onSlow: () => (outputEl.textContent = "Yapay zekâ ön yazıyı hazırlıyor, biraz sürebilir…") },
+      );
       if (!response.ok) {
-        throw new ApiError(await apiError(response, "Ön yazı oluşturulamadı, sunucuyu kontrol et."));
+        throw new ApiError(await apiError(response, "Ön yazı oluşturulamadı. Birkaç saniye sonra tekrar dene."));
       }
       const data = await response.json();
 
@@ -516,8 +764,9 @@ async function handleListClick(e) {
 
       outputEl.appendChild(textarea);
       outputEl.appendChild(downloadBtn);
+      haptic(15);
     } catch (err) {
-      outputEl.textContent = err instanceof ApiError ? err.message : "Ön yazı oluşturulamadı, sunucuyu kontrol et.";
+      outputEl.textContent = errorMessage(err, "Ön yazı oluşturulamadı. Birkaç saniye sonra tekrar dene.");
     }
 
     e.target.disabled = false;
@@ -535,18 +784,13 @@ async function handleListClick(e) {
     e.target.textContent = "Hazırlanıyor...";
 
     try {
-      const response = await fetch(`${API_URL}/cover-letter-pdf`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text,
-          job_title: job.title,
-          company: job.company,
-          file_name: fileName,
-        }),
-      });
+      const response = await apiFetch(
+        "/cover-letter-pdf",
+        jsonRequest("POST", { text, job_title: job.title, company: job.company, file_name: fileName }),
+        { timeout: 30000 },
+      );
       if (!response.ok) {
-        throw new Error("PDF üretilemedi");
+        throw new ApiError(await apiError(response, "PDF hazırlanamadı. Metni kısaltıp tekrar dene."));
       }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
@@ -556,7 +800,7 @@ async function handleListClick(e) {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      alert("PDF oluşturulamadı, sunucuyu kontrol et.");
+      showToast(errorMessage(err, "PDF hazırlanamadı. Metni kısaltıp tekrar dene."), { error: true });
     }
 
     e.target.disabled = false;
@@ -608,13 +852,13 @@ cvReviewBtn.addEventListener("click", async () => {
   cvReviewResult.classList.add("hidden-field");
 
   try {
-    const response = await fetch(`${API_URL}/cv-review`, {
-      method: "POST",
-      body: formData,
-    });
+    const response = await apiFetch(
+      "/cv-review",
+      { method: "POST", body: formData },
+      { timeout: 90000, onSlow: () => (cvReviewStatus.textContent = SLOW_SERVER_MESSAGE) },
+    );
     if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new ApiError(err.detail || "İnceleme başarısız oldu.");
+      throw new ApiError(await apiError(response, "CV incelenemedi, birazdan tekrar dene."));
     }
     const review = await response.json();
 
@@ -651,7 +895,7 @@ cvReviewBtn.addEventListener("click", async () => {
     cvReviewStatus.textContent = "";
     cvReviewResult.classList.remove("hidden-field");
   } catch (err) {
-    cvReviewStatus.textContent = err instanceof ApiError ? err.message : "İnceleme başarısız oldu.";
+    cvReviewStatus.textContent = errorMessage(err, "CV incelenemedi, birazdan tekrar dene.");
   }
 
   cvReviewBtn.disabled = false;
@@ -659,7 +903,7 @@ cvReviewBtn.addEventListener("click", async () => {
 });
 
 if (new URLSearchParams(window.location.search).get("login") === "failed") {
-  showToast("Google ile giriş yapılamadı, tekrar dene.", 4000);
+  showToast("Google ile giriş yapılamadı, tekrar dene.", { duration: 4000, error: true });
   window.history.replaceState({}, "", window.location.pathname);
 }
 

@@ -28,6 +28,12 @@
   padding: 0;
 }
 
+html {
+  color-scheme: dark;
+  background: var(--bg);
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   background: var(--bg);
   background-image:
@@ -233,10 +239,24 @@ a {
 .nav-toggle.is-open span:nth-child(3) {
   transform: translateY(-7px) rotate(-45deg);
 }
-.user-menu span {
+.user-name-btn {
+  background: none;
+  border: none;
+  border-bottom: 1px dashed var(--border);
+  padding: 2px 0;
+  font-family: inherit;
   font-weight: 700;
   font-size: 0.85rem;
   color: var(--text-primary);
+  cursor: pointer;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.user-name-btn:hover {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
 }
 
 /* ---------- Giriş / Kayıt modalı ---------- */
@@ -244,11 +264,15 @@ a {
   position: fixed;
   inset: 0;
   z-index: 200;
-  background: rgba(58, 46, 59, 0.35);
+  background: rgba(14, 8, 5, 0.72);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  animation: overlay-in 0.2s ease;
 }
 .modal-card {
   position: relative;
@@ -257,7 +281,10 @@ a {
   background: var(--surface);
   border-radius: 20px;
   padding: 52px 32px 32px;
-  box-shadow: 0 20px 60px rgba(58, 46, 59, 0.25);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--border);
+  margin: auto;
+  animation: modal-in 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.1);
 }
 .modal-close {
   position: absolute;
@@ -690,7 +717,7 @@ select {
   padding: 12px 14px;
   color: var(--text-primary);
   font-family: var(--font-body);
-  font-size: 0.95rem;
+  font-size: 1rem;
   outline: none;
   transition:
     border-color 0.2s ease,
@@ -803,7 +830,8 @@ textarea {
 .toast {
   position: fixed;
   left: 50%;
-  bottom: 28px;
+  bottom: calc(28px + env(safe-area-inset-bottom));
+  max-width: calc(100vw - 32px);
   transform: translate(-50%, 12px);
   z-index: 300;
   background: var(--text-primary);
@@ -1378,5 +1406,184 @@ input:user-invalid:focus {
 @media (max-width: 720px) {
   .legal-header {
     padding: 14px 20px;
+  }
+}
+
+
+/* ---------- Modal içerikleri, onay, hesap ---------- */
+body.modal-open {
+  overflow: hidden;
+}
+.modal-title {
+  font-size: 1.35rem;
+  margin-bottom: 10px;
+  color: var(--primary);
+}
+.modal-subtitle {
+  font-size: 1rem;
+  margin: 22px 0 6px;
+  color: var(--text-primary);
+}
+.modal-text {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+.account-email {
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+.btn-danger {
+  background: #a53b2f;
+  color: #fff;
+}
+.btn-danger:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(165, 59, 47, 0.4);
+}
+.btn:active:not(:disabled) {
+  transform: translateY(1px) scale(0.98);
+}
+
+/* Toast: eylem düğmesi ve hata tonu */
+.toast.has-action {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  pointer-events: auto;
+  padding-right: 10px;
+}
+.toast.is-error {
+  background: #a53b2f;
+  color: #fff;
+}
+.toast-action {
+  background: var(--bg);
+  color: var(--primary);
+  border: none;
+  border-radius: 100px;
+  padding: 6px 14px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Sonuç kartları sırayla belirir */
+.card-enter {
+  animation: card-in 0.4s ease both;
+  animation-delay: var(--enter-delay, 0ms);
+}
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+}
+
+/* Çentik / ana ekran çubuğu olan telefonlarda içerik taşmasın */
+@supports (padding: max(0px)) {
+  .navbar {
+    padding-left: max(40px, env(safe-area-inset-left));
+    padding-right: max(40px, env(safe-area-inset-right));
+  }
+  footer {
+    padding-bottom: calc(32px + env(safe-area-inset-bottom));
+  }
+  @media (max-width: 720px) {
+    .navbar {
+      padding-left: max(20px, env(safe-area-inset-left));
+      padding-right: max(20px, env(safe-area-inset-right));
+    }
+  }
+}
+
+/* Dokunmatik ekranlarda en az 44px'lik hedefler (iOS/Material önerisi) */
+@media (pointer: coarse) {
+  .btn,
+  .btn-small,
+  .auth-tab,
+  .toast-action {
+    min-height: 44px;
+  }
+  .favorite-btn,
+  .modal-close,
+  .nav-toggle {
+    width: 44px;
+    height: 44px;
+  }
+  .modal-close {
+    top: 10px;
+    right: 10px;
+  }
+  .nav-links a,
+  .footer-links a,
+  .job-link,
+  .user-name-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .nav-links a {
+    display: flex;
+  }
+  select,
+  input:not([type="file"]),
+  textarea {
+    min-height: 44px;
+  }
+}
+
+/* Üst çentik: sabit çubuk ve gövde boşluğu birlikte kayar */
+.navbar {
+  padding-top: calc(16px + env(safe-area-inset-top));
+}
+body {
+  padding-top: calc(76px + env(safe-area-inset-top));
+}
+@media (max-width: 720px) {
+  .navbar {
+    padding-top: calc(14px + env(safe-area-inset-top));
+  }
+  body {
+    padding-top: calc(64px + env(safe-area-inset-top));
+  }
+}
+
+/* Dar ekranda giriş yapmış kullanıcı çubuğu sığsın */
+#logout-btn {
+  white-space: nowrap;
+}
+@media (max-width: 480px) {
+  .brand-tagline {
+    display: none;
+  }
+  .user-menu {
+    gap: 6px;
+  }
+  .user-name-btn {
+    max-width: 84px;
+  }
+  .user-menu .btn-small {
+    padding: 10px 14px;
   }
 }

@@ -24,6 +24,7 @@ from src.db.storage import (
     record_failed_login,
     count_recent_failed_logins,
     clear_failed_logins,
+    delete_user,
 )
 
 router = APIRouter(prefix="/auth")
@@ -56,6 +57,10 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: str = Field(max_length=254)
     password: str = Field(max_length=128)
+
+
+class DeleteAccountRequest(BaseModel):
+    confirm_email: str = Field(max_length=254)
 
 
 def _user_public(user: User) -> dict:
@@ -116,6 +121,22 @@ def logout(request: Request):
     user_id = request.session.get("user_id")
     logout_user(request)
     log_event("auth.logout", request, user=user_id)
+    return {"ok": True}
+
+
+@router.post("/delete-account", dependencies=[Depends(rate_limit("delete-account", 5, 3600))])
+def delete_account(
+    req: DeleteAccountRequest,
+    request: Request,
+    user: User | None = Depends(get_current_user),
+):
+    if not user:
+        raise HTTPException(401, "Bu işlem için giriş yapmalısın.")
+    if not user.email or user.email.lower() != req.confirm_email.strip().lower():
+        raise HTTPException(400, "Yazdığın e-posta hesabınla eşleşmiyor.")
+    delete_user(user.id)
+    logout_user(request)
+    log_event("auth.account_deleted", request, user=user.id)
     return {"ok": True}
 
 
