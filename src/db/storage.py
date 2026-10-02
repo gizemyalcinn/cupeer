@@ -262,10 +262,16 @@ def get_favorite_jobs(user_id: str) -> list[Job]:
 
 def record_failed_login(email: str) -> None:
     conn = _connect()
+    now = datetime.now(timezone.utc)
     with conn.cursor() as cur:
+        # Gereksiz veri tutma: kilitleme penceresinden (15 dk) çok eski denemeler silinir.
+        cur.execute(
+            "DELETE FROM login_attempts WHERE attempted_at < %s",
+            ((now - timedelta(days=1)).isoformat(),),
+        )
         cur.execute(
             "INSERT INTO login_attempts (email, attempted_at) VALUES (%s, %s)",
-            (email, datetime.now(timezone.utc).isoformat()),
+            (email, now.isoformat()),
         )
     conn.commit()
     conn.close()

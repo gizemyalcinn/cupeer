@@ -167,3 +167,7 @@ tests/            Automated pytest tests
 scripts/manual/   Manual debug scripts used during development
 ```
 
+## Credits
+
+- Alagard pixel font by Hewett Tsoi (free, credit required).
+- EB Garamond (SIL Open Font License), self-hosted.

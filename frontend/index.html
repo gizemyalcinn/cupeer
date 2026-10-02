@@ -40,6 +40,7 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
+    <a class="skip-link" href="#main">İçeriğe geç</a>
     <nav class="navbar">
       <div class="nav-brand">
         <span class="logo-mark">
@@ -100,6 +101,13 @@
           <input type="email" id="register-email" required autocomplete="email" />
           <label for="register-password">Şifre</label>
           <input type="password" id="register-password" required minlength="8" autocomplete="new-password" />
+          <label class="consent" for="register-consent">
+            <input type="checkbox" id="register-consent" required />
+            <span>
+              16 yaşından büyüğüm; <a href="/terms/" target="_blank" rel="noopener">Kullanım Koşulları</a>'nı ve
+              <a href="/privacy/" target="_blank" rel="noopener">Gizlilik Politikası</a>'nı kabul ediyorum.
+            </span>
+          </label>
           <p class="auth-error" id="register-error" role="alert"></p>
           <button type="submit" class="btn btn-primary">Kayıt Ol</button>
         </form>
@@ -115,6 +123,11 @@
           </svg>
           Google ile devam et
         </a>
+        <p class="auth-legal">
+          Google ile devam ederek 16 yaşından büyük olduğunu ve
+          <a href="/terms/" target="_blank" rel="noopener">Koşullar</a> ile
+          <a href="/privacy/" target="_blank" rel="noopener">Gizlilik Politikası</a>'nı kabul ettiğini belirtirsin.
+        </p>
       </div>
     </div>
 
@@ -147,6 +160,7 @@
       </div>
     </div>
 
+    <main id="main">
     <section class="hero reveal">
       <div class="hero-inner">
         <div class="hero-copy">
@@ -161,7 +175,7 @@
             >
           </h1>
           <p class="hero-subtitle">
-            7 farklı iş platformundan toplanan güncel ilanlar, CV'ne göre
+            7 farklı iş platformundan toplanan ilanlar, CV'ne göre
             akıllıca sıralanır.
           </p>
           <div class="hero-actions">
@@ -192,7 +206,7 @@
         ><span class="stat-label">Destekli</span>
       </div>
       <div class="stat">
-        <span class="stat-number">Anlık</span
+        <span class="stat-number">Hızlı</span
         ><span class="stat-label">Öneri</span>
       </div>
       <div class="stat">
@@ -214,20 +228,20 @@
           <div class="timeline-content">
             <span class="timeline-number gradient-text">01</span>
             <h3>Ara</h3>
-            <p>Aramak istediğin pozisyonu ve konumu belirterek süreci başlat.</p>
+            <p>İlanlar belirli bir pozisyon ve konum için taranır.</p>
           </div>
           <div class="timeline-node">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
           </div>
         </div>
         <div class="timeline-item reverse">
           <div class="timeline-content">
             <span class="timeline-number gradient-text">02</span>
             <h3>Topla</h3>
-            <p>Yedi farklı platformdaki güncel ilanlar otomatik olarak bir araya getirilir.</p>
+            <p>Yedi farklı platformdaki ilanlar otomatik olarak bir araya getirilir.</p>
           </div>
           <div class="timeline-node">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>
+            <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>
           </div>
         </div>
         <div class="timeline-item">
@@ -237,7 +251,7 @@
             <p>CV'n yüklenir, sana en uygun pozisyonlar otomatik olarak sıralanır.</p>
           </div>
           <div class="timeline-node">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+            <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
           </div>
         </div>
       </div>
@@ -265,11 +279,11 @@
         </div>
         <div class="feature-card">
           <div class="icon-badge">↻</div>
-          <h3>Güncel Kalır</h3>
-          <p>Artımlı tarama ile sadece yeni ilanları çeker, eskiyeni gizler.</p>
+          <h3>Yeni İlanları Ekler</h3>
+          <p>Her taramada yalnızca yeni ilanları ekler, süresi dolanları listeden gizler.</p>
         </div>
         <div class="feature-card">
-          <div class="icon-badge"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg></div>
+          <div class="icon-badge"><svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg></div>
           <h3>CV Danışmanlığı</h3>
           <p>CV'ni yapay zekaya incelet; ATS uyumluluğu ve somut gelişim önerileri al.</p>
         </div>
@@ -289,11 +303,11 @@
         <div id="refresh-form" class="hidden-field">
         <div class="inputs-row">
           <div class="field">
-            <label>Anahtar kelime</label>
+            <label for="keywords">Anahtar kelime</label>
             <input type="text" id="keywords" placeholder="Örn: data scientist" />
           </div>
           <div class="field">
-            <label>Konum</label>
+            <label for="scrape-location">Konum</label>
             <input type="text" id="scrape-location" placeholder="Örn: Istanbul" />
           </div>
         </div>
@@ -315,14 +329,14 @@
                 class="file-input-hidden"
               />
               <label for="cv-file" class="btn btn-outline file-select-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5z"/><path d="M14 2v6h6"/></svg>
+                <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5z"/><path d="M14 2v6h6"/></svg>
                 Dosya Seç
               </label>
               <span id="file-name" class="file-name">Dosya seçilmedi</span>
             </div>
           </div>
           <div class="field">
-            <label>Konum filtresi</label>
+            <label for="recommend-location">Konum filtresi</label>
             <select id="recommend-location">
               <option value="">Tümü</option>
               <option value="Türkiye">Türkiye</option>
@@ -342,6 +356,10 @@
             </select>
           </div>
         </div>
+        <p class="upload-note">
+          PDF'in metni, işlenmesi için Google Gemini'ye gönderilir; dosya ve metin sunucuda saklanmaz.
+          <a href="/privacy/" target="_blank" rel="noopener">Ayrıntılar</a>
+        </p>
         <p id="cv-status" role="status" aria-live="polite"></p>
         <textarea id="profile-text" class="hidden-field"></textarea>
         <button id="recommend-btn" class="btn btn-primary">Öner</button>
@@ -377,13 +395,17 @@
                 class="file-input-hidden"
               />
               <label for="cv-review-file" class="btn btn-outline file-select-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5z"/><path d="M14 2v6h6"/></svg>
+                <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5z"/><path d="M14 2v6h6"/></svg>
                 Dosya Seç
               </label>
               <span id="cv-review-file-name" class="file-name">Dosya seçilmedi</span>
             </div>
           </div>
         </div>
+        <p class="upload-note">
+          PDF'in metni, işlenmesi için Google Gemini'ye gönderilir; dosya ve metin sunucuda saklanmaz.
+          <a href="/privacy/" target="_blank" rel="noopener">Ayrıntılar</a>
+        </p>
         <p id="cv-review-status" role="status" aria-live="polite"></p>
         <button id="cv-review-btn" class="btn btn-primary">İncele</button>
       </div>
@@ -428,6 +450,8 @@
       <p>CV'ni yükle, sana en uygun ilanları saniyeler içinde gör.</p>
       <a href="#tool" class="btn btn-primary">Maceraya Atıl →</a>
     </section>
+
+    </main>
 
     <footer>
       <span class="brand"><span class="gradient-text">Cup</span>eer</span>
