@@ -735,6 +735,7 @@ function jobCardHtml(job, { index, showScore = true, enterDelay, status } = {}) 
 const recommendBtn = document.getElementById("recommend-btn");
 const resultsList = document.getElementById("results-list");
 
+const letterOptions = document.querySelector(".letter-options");
 let lastJobs = [];
 const PAGE_SIZE = 10;
 let visibleCount = PAGE_SIZE;
@@ -742,10 +743,12 @@ let visibleCount = PAGE_SIZE;
 recommendBtn.addEventListener("click", async () => {
   const profileText = document.getElementById("profile-text").value;
   if (!profileText.trim()) {
+    letterOptions.classList.add("hidden-field");
     resultsList.innerHTML = '<p class="empty-state">Önce yukarıdan bir CV dosyası (PDF) yükle.</p>';
     return;
   }
 
+  letterOptions.classList.add("hidden-field");
   resultsList.innerHTML = '<p class="empty-state">Diyarlar taranıyor...</p>';
   recommendBtn.disabled = true;
   recommendBtn.classList.add("is-loading");
@@ -775,6 +778,7 @@ recommendBtn.addEventListener("click", async () => {
 });
 
 function renderResults(animateFrom = 0) {
+  letterOptions.classList.toggle("hidden-field", lastJobs.length === 0);
   if (lastJobs.length === 0) {
     resultsList.innerHTML =
       '<p class="empty-state">Bu CV için uygun ilan bulunamadı. Konumu boş bırakmayı ya da önce "Yenile" ile yeni ilan çekmeyi dene.</p>';
