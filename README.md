@@ -33,7 +33,7 @@ listings. The CV text is extracted on the server and is not stored.
   medium, long) and a language (Turkish or English), then edit the result,
   regenerate it, or download it as a PDF.
 
-  ![A generated cover letter](docs/screenshots/cover-letter.jpg)
+  ![A generated cover letter](docs/screenshots/cover-letter.png)
 
 - **CV review.** Upload a PDF and get an overall score, scores for ATS
   compatibility, content impact and format, plus concrete strengths and
