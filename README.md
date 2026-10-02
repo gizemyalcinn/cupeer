@@ -9,10 +9,13 @@ applications you make.
 The interface is Turkish and themed as a medieval tavern (Alagard pixel font,
 dark wood and gold). The code, comments and this README are mostly English.
 
-**Live demo:** https://cupeer.onrender.com — hosted on Render's free tier, so
-the first request after a quiet period can take 30–50 seconds while the server
-wakes up. A fictional CV to try it with is in
-[`scripts/manual/sample_cv.pdf`](scripts/manual/sample_cv.pdf).
+**This is a portfolio project, not a public service.** The deployed instance is
+private and there is no public demo link; the screenshots below show how it
+looks and what it does, and you can run it yourself by following the setup
+steps. Fetching new listings is paid (Apify), so it is restricted to the site
+owner's account and is closed to everyone else, including on a copy you run
+yourself until you set `REFRESH_ALLOWED_EMAILS`. A fictional CV to try the
+matching with is in [`scripts/manual/sample_cv.pdf`](scripts/manual/sample_cv.pdf).
 
 ![Cupeer homepage](docs/screenshots/hero.jpg)
 
@@ -224,7 +227,7 @@ session instead.
 
 ## Privacy
 
-The privacy and terms pages (`/privacy/`, `/terms/`) describe what the live site
+The privacy and terms pages (`/privacy/`, `/terms/`) describe what the deployed app
 does. In short: a CV is processed in memory and is never stored, but its text is
 sent to Google's Gemini API to produce matches, letters and reviews. The only
 cookie is the signed session cookie, so there is no cookie banner. Accounts can
@@ -233,8 +236,9 @@ visiting it makes no requests to Google.
 
 ## Deploying
 
-The live site runs on Render: a free web service and a free PostgreSQL
-instance, auto-deployed from `main`. Set the environment variables above on the
+For portfolio purposes the project runs privately on Render: a free web service
+and a free PostgreSQL instance, auto-deployed from `main`. It is not open to the
+public. If you deploy your own copy, set the environment variables above on the
 web service, use the database's internal URL for `DATABASE_URL`, and keep
 `WEB_CONCURRENCY=1`. Render's free Postgres is deleted after about a month, so
 take a backup first and recreate it if you want to keep the data.
