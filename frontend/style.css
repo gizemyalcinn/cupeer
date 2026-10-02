@@ -1815,3 +1815,56 @@ body {
   border-left: 3px solid var(--accent-lavender);
   opacity: 0.8;
 }
+
+/* ---------- Demo kartları: dört veri girişi aynı boyda ---------- */
+.inputs-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.inputs-row .field {
+  min-width: 0;
+}
+.inputs-row input[type="text"],
+.inputs-row select,
+.inputs-row .file-upload {
+  width: 100%;
+  height: 56px;
+  min-height: 56px;
+}
+#recommend-location {
+  max-width: none;
+}
+/* Dosya seçici, yanındaki alanlarla aynı kutu görünümünde */
+.inputs-row .file-upload {
+  flex-wrap: nowrap;
+  gap: 12px;
+  padding: 0 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.inputs-row .file-select-btn {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  min-height: 0;
+  font-size: 0.9rem;
+  border-radius: 8px;
+}
+.inputs-row .file-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.upload-note {
+  margin: 0 0 18px;
+}
+#cv-status:empty {
+  display: none;
+}
+@media (max-width: 720px) {
+  .inputs-row {
+    grid-template-columns: 1fr;
+  }
+}
