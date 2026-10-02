@@ -10,12 +10,10 @@ The interface is Turkish and themed as a medieval tavern (Alagard pixel font,
 dark wood and gold). The code, comments and this README are mostly English.
 
 **This is a portfolio project, not a public service.** The deployed instance is
-private and there is no public demo link; the screenshots below show how it
-looks and what it does, and you can run it yourself by following the setup
-steps. Fetching new listings is paid (Apify), so it is restricted to the site
-owner's account and is closed to everyone else, including on a copy you run
-yourself until you set `REFRESH_ALLOWED_EMAILS`. A fictional CV to try the
-matching with is in [`scripts/manual/sample_cv.pdf`](scripts/manual/sample_cv.pdf).
+private and there is no public demo or installation guide; the screenshots below
+show how it looks and what it does. Fetching new listings is paid (Apify), so it
+is restricted to the site owner's account and closed to everyone else. The CV
+used in the screenshots is a fictional sample.
 
 ![Cupeer homepage](docs/screenshots/hero.jpg)
 
@@ -105,67 +103,13 @@ there is no separate frontend build or server.
 | Fonts | Alagard and EB Garamond, both self-hosted |
 | Hosting | Render (free web service and free Postgres) |
 
-## Setup
-
-```bash
-git clone https://github.com/gizemyalcinn/cupeer.git
-cd cupeer
-python -m venv venv
-venv\Scripts\activate        # Windows
-# source venv/bin/activate   # macOS/Linux
-
-pip install -r requirements.txt
-cp .env.example .env
-```
-
-Fill in `.env`:
-
-| Variable | Required | Purpose |
-|---|---|---|
-| `DATABASE_URL` | yes | PostgreSQL connection string |
-| `GEMINI_API_KEY` | yes | Embeddings, cover letters, CV review ([AI Studio](https://aistudio.google.com)) |
-| `APIFY_API_TOKEN` | for scraping | Collecting listings ([Apify console](https://console.apify.com)) |
-| `SESSION_SECRET_KEY` | yes in production | Signs session cookies; e.g. `python -c "import secrets; print(secrets.token_hex(32))"` |
-| `REFRESH_ALLOWED_EMAILS` | for scraping | Comma-separated e-mails allowed to run paid scrapes (see Security). Empty means nobody can |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | optional | Google sign-in |
-
-Tables are created automatically on first connection.
-
-Email and password accounts work as soon as `SESSION_SECRET_KEY` is set. For
-Google sign-in, create an OAuth 2.0 Client ID (Web application) in the
-[Google Cloud Console](https://console.cloud.google.com/apis/credentials), add
-`http://127.0.0.1:8000/auth/google/callback` as a redirect URI, and put the ID
-and secret in `.env`. Without them the Google button simply reports an error and
-everything else still works.
-
-To scrape, sign in with Google using an e-mail listed in
-`REFRESH_ALLOWED_EMAILS`, then use the "Yeni ilan çek" form.
-
-## Running
-
-```bash
-uvicorn src.api.main:app --reload
-```
-
-Open http://127.0.0.1:8000. In production keep a single worker
-(`WEB_CONCURRENCY=1`), because the rate limiter is in memory.
-
 ## Tests
 
-```bash
-pytest
-```
-
-The tests need no network access, API keys or database: they cover cleaning,
-country detection, freshness, request validation, rate limiting, security
-headers, upload limits, the scraping permission rules, password strength, the
-favorite-status endpoint and the cover-letter prompt options.
-
-Files under `scripts/manual/` are not tests. They are scripts written during
-development to check individual platforms or the pipeline by hand, and many make
-real, paid API calls. Run them deliberately. `seed_demo_jobs.py` is the
-exception: it inserts a few sample listings without any API calls, which is
-handy for trying the matching flow for free.
+An automated test suite (pytest) runs without network access, API keys or a
+database. It covers cleaning, country detection, freshness, request validation,
+rate limiting, security headers, upload limits, the scraping permission rules,
+password strength, the favorite-status endpoint and the cover-letter prompt
+options. A GitHub Actions workflow runs it on every push.
 
 ## API
 
@@ -215,8 +159,8 @@ What is in place, and where to look:
   login attempts are deleted after a day.
 - **Dependencies.** A GitHub Actions workflow runs `pip-audit`, `bandit` and the
   tests on every push and weekly; Dependabot opens update PRs.
-- **Backups.** `python scripts/backup_db.py backup` and `restore <file>` (output
-  goes to the git-ignored `backups/`).
+- **Backups.** A backup and restore script (`scripts/backup_db.py`) writes to a
+  git-ignored folder.
 
 Secrets live only in `.env` or the host's environment. In production the app
 refuses to start without `SESSION_SECRET_KEY`.
@@ -234,20 +178,18 @@ cookie is the signed session cookie, so there is no cookie banner. Accounts can
 be deleted from the interface. Fonts are served from the site itself, so
 visiting it makes no requests to Google.
 
-## Deploying
+## Deployment
 
-For portfolio purposes the project runs privately on Render: a free web service
-and a free PostgreSQL instance, auto-deployed from `main`. It is not open to the
-public. If you deploy your own copy, set the environment variables above on the
-web service, use the database's internal URL for `DATABASE_URL`, and keep
-`WEB_CONCURRENCY=1`. Render's free Postgres is deleted after about a month, so
-take a backup first and recreate it if you want to keep the data.
+The project runs privately on Render (a free web service and a free PostgreSQL
+instance), auto-deployed from `main`, with a single worker because the rate
+limiter is in memory. Render's free Postgres is deleted after about a month, so
+backups are taken before it expires. It is not open to the public.
 
 ## A note on cost
 
 Apify and Gemini both have free tiers, but they are limited. Scraping is the
-costly part, which is why it is restricted and uses small `max_items` values by
-default. Watch your own quotas when using your own keys.
+costly part, which is why it is restricted to the owner and uses small
+`max_items` values by default.
 
 ## Project structure
 
