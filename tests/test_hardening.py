@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 
 from src.api import hardening
 from src.api.main import app
-from src.auth.security import can_refresh, get_current_user
+from src.auth.security import can_refresh, get_current_user, weak_password_reason
 from src.preprocessing.schema import User
 
 client = TestClient(app)
@@ -149,3 +149,17 @@ def test_refresh_returns_403_for_logged_in_stranger(monkeypatch):
     finally:
         app.dependency_overrides.clear()
     assert response.status_code == 403
+
+
+def test_weak_passwords_are_rejected():
+    assert weak_password_reason("12345678")
+    assert weak_password_reason("PASSWORD1")
+    assert weak_password_reason("aaaaaaaaaa")
+    assert weak_password_reason("gizem2026!", "gizem@example.com")  # e-postanın yerel kısmını içeriyor
+    assert weak_password_reason("kuş-tüyü-Marangoz-71", "gizem@example.com") is None
+
+
+def test_register_rejects_common_password():
+    response = client.post("/auth/register", json={"email": "someone@example.com", "password": "12345678"})
+    assert response.status_code == 400
+    assert "yaygın" in response.json()["detail"]

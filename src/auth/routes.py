@@ -15,6 +15,7 @@ from src.auth.security import (
     logout_user,
     get_current_user,
     can_refresh,
+    weak_password_reason,
 )
 from src.db.storage import (
     create_user,
@@ -83,6 +84,9 @@ def register(req: RegisterRequest, request: Request):
         raise HTTPException(400, "Şifre en az 8 karakter olmalı.")
     if len(req.password.encode("utf-8")) > MAX_PASSWORD_BYTES:
         raise HTTPException(400, "Şifre en fazla 72 karakter olabilir.")
+    weak = weak_password_reason(req.password, email)
+    if weak:
+        raise HTTPException(400, weak)
     if get_user_by_email(email):
         raise HTTPException(400, "Bu e-posta ile zaten bir hesap var.")
 
