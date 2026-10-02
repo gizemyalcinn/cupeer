@@ -368,6 +368,29 @@
 
     <section class="results reveal">
       <h2>Sonuçlar</h2>
+      <div class="letter-options" role="group" aria-label="Ön yazı ayarları">
+        <span class="letter-options-title">Ön yazı ayarları</span>
+        <label class="opt"><span>Ton</span>
+          <select id="letter-tone">
+          <option value="balanced">Dengeli</option>
+          <option value="formal">Resmi</option>
+          <option value="friendly">Samimi</option>
+        </select>
+        </label>
+        <label class="opt"><span>Uzunluk</span>
+          <select id="letter-length">
+          <option value="short">Kısa</option>
+          <option value="medium" selected>Orta</option>
+          <option value="long">Uzun</option>
+        </select>
+        </label>
+        <label class="opt"><span>Dil</span>
+          <select id="letter-language">
+          <option value="tr">Türkçe</option>
+          <option value="en">English</option>
+        </select>
+        </label>
+      </div>
       <div id="results-list">
         <p class="empty-state">
           CV'ni yükleyip "Öner"e bastığında sana uygun ilanlar burada, uyum yüzdesiyle sıralı listelenir.
@@ -439,7 +462,8 @@
 
     <section id="favorites" class="results reveal">
       <h2>Hazine Sandığım</h2>
-      <p class="section-subtitle">Beğendiğin fırsatlar burada birikir.</p>
+      <p class="section-subtitle">Beğendiğin fırsatlar burada birikir; başvurularını da buradan takip edebilirsin.</p>
+      <div id="favorites-filter" class="status-filter" role="group" aria-label="Duruma göre filtrele"></div>
       <div id="favorites-list">
         <p class="empty-state">Sandığın henüz boş, yolcu. Sonuçlardaki kalp ikonuna basarak hazinene ekle.</p>
       </div>

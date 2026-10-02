@@ -163,3 +163,48 @@ def test_register_rejects_common_password():
     response = client.post("/auth/register", json={"email": "someone@example.com", "password": "12345678"})
     assert response.status_code == 400
     assert "yaygın" in response.json()["detail"]
+
+
+def test_favorite_status_requires_login():
+    response = client.post("/favorite/status", json={"job_id": "x:1", "status": "applied"})
+    assert response.status_code == 401
+
+
+def test_favorite_status_rejects_unknown_status():
+    app.dependency_overrides[get_current_user] = lambda: User(id="1", email="a@b.co")
+    try:
+        response = client.post("/favorite/status", json={"job_id": "x:1", "status": "hired-lol"})
+    finally:
+        app.dependency_overrides.clear()
+    assert response.status_code == 422
+
+
+def test_favorite_status_404_when_not_a_favorite(monkeypatch):
+    from src.api import main
+
+    monkeypatch.setattr(main, "set_favorite_status", lambda *a: False)
+    app.dependency_overrides[get_current_user] = lambda: User(id="1", email="a@b.co")
+    try:
+        response = client.post("/favorite/status", json={"job_id": "x:1", "status": "applied"})
+    finally:
+        app.dependency_overrides.clear()
+    assert response.status_code == 404
+
+
+def test_cover_letter_prompt_follows_options():
+    from src.model.cover_letter import build_cover_letter_prompt
+
+    base = ("CV metni", "Backend Developer", "Acme", "Python ve FastAPI")
+    short_en = build_cover_letter_prompt(*base, tone="formal", length="short", language="en")
+    assert "İngilizce" in short_en and "Dear Hiring" in short_en
+    assert "100-140 kelime" in short_en and "resmi" in short_en
+    default = build_cover_letter_prompt(*base)
+    assert "180-230 kelime" in default and "HER ZAMAN Türkçe" in default
+
+
+def test_cover_letter_rejects_unknown_options():
+    response = client.post(
+        "/cover-letter",
+        json={"profile_text": "cv", "job_title": "dev", "tone": "angry"},
+    )
+    assert response.status_code == 422

@@ -87,6 +87,14 @@ const SOURCE_LABELS = {
   remoteok: "RemoteOK",
 };
 
+const STATUS_LABELS = {
+  saved: "Kaydedildi",
+  applied: "Başvurdum",
+  interview: "Mülakat",
+  offer: "Teklif geldi",
+  rejected: "Reddedildi",
+};
+
 const HEART_ICON =
   '<svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg>';
 
@@ -542,7 +550,7 @@ function setFavoriteLocal(jobId, makeFavorite, job) {
     favoriteIds.add(jobId);
     const source = job || lastJobs.find((j) => j.id === jobId) || favJobs.find((j) => j.id === jobId);
     if (source && !favJobs.some((j) => j.id === jobId)) {
-      favJobs = [{ ...source }, ...favJobs];
+      favJobs = [{ status: "saved", ...source }, ...favJobs];
     }
   } else {
     favoriteIds.delete(jobId);
@@ -553,8 +561,9 @@ function setFavoriteLocal(jobId, makeFavorite, job) {
 }
 
 // Önce arayüz güncellenir; sunucu reddederse eski haline döner ve kullanıcıya söylenir.
-async function toggleFavorite(jobId, makeFavorite) {
-  const job = lastJobs.find((j) => j.id === jobId) || favJobs.find((j) => j.id === jobId);
+async function toggleFavorite(jobId, makeFavorite, knownJob) {
+  const job = knownJob || favJobs.find((j) => j.id === jobId) || lastJobs.find((j) => j.id === jobId);
+  const previousStatus = job && job.status;
   setFavoriteLocal(jobId, makeFavorite, job);
 
   try {
@@ -573,7 +582,15 @@ async function toggleFavorite(jobId, makeFavorite) {
   haptic(12);
   if (!makeFavorite) {
     showToast("Hazinenden çıkarıldı.", {
-      action: { label: "Geri al", onClick: () => toggleFavorite(jobId, true) },
+      action: {
+        label: "Geri al",
+        onClick: async () => {
+          await toggleFavorite(jobId, true, { ...job, status: "saved" });
+          if (previousStatus && previousStatus !== "saved") {
+            setFavoriteStatus(jobId, previousStatus, { silent: true });
+          }
+        },
+      },
     });
   }
 }
@@ -586,7 +603,35 @@ function syncFavoriteButtons() {
   });
 }
 
+let favoriteFilter = "all";
+const favoritesFilter = document.getElementById("favorites-filter");
+
+function renderFavoriteFilter() {
+  if (!currentUser || favJobs.length === 0) {
+    favoritesFilter.innerHTML = "";
+    return;
+  }
+  const countOf = (key) => favJobs.filter((j) => (j.status || "saved") === key).length;
+  const chips = [["all", "Tümü", favJobs.length], ...Object.entries(STATUS_LABELS).map(([k, l]) => [k, l, countOf(k)])];
+  favoritesFilter.innerHTML = chips
+    .map(
+      ([key, label, count]) =>
+        `<button type="button" class="status-chip${key === favoriteFilter ? " is-active" : ""}" data-filter="${key}" aria-pressed="${key === favoriteFilter}">${label} <span class="chip-count">${count}</span></button>`,
+    )
+    .join("");
+}
+
+favoritesFilter.addEventListener("click", (e) => {
+  const chip = e.target.closest(".status-chip");
+  if (!chip) return;
+  favoriteFilter = chip.dataset.filter;
+  renderFavorites();
+  const active = favoritesFilter.querySelector(".status-chip.is-active");
+  if (active) active.focus();
+});
+
 function renderFavorites() {
+  renderFavoriteFilter();
   if (!currentUser) {
     favoritesList.innerHTML =
       '<p class="empty-state">Hazineni saklamak için önce kapıdan içeri gir (giriş yap).</p>';
@@ -597,11 +642,58 @@ function renderFavorites() {
       '<p class="empty-state">Sandığın henüz boş, yolcu. Sonuçlardaki kalp ikonuna basarak hazinene ekle.</p>';
     return;
   }
-  favoritesList.innerHTML = favJobs.map((job) => jobCardHtml(job, { showScore: false })).join("");
+  const shown = favoriteFilter === "all" ? favJobs : favJobs.filter((j) => (j.status || "saved") === favoriteFilter);
+  if (shown.length === 0) {
+    favoritesList.innerHTML = `<p class="empty-state">"${STATUS_LABELS[favoriteFilter]}" durumunda ilan yok.</p>`;
+    return;
+  }
+  favoritesList.innerHTML = shown
+    .map((job) => jobCardHtml(job, { showScore: false, status: job.status || "saved" }))
+    .join("");
 }
 
+async function setFavoriteStatus(jobId, status, { silent = false } = {}) {
+  const job = favJobs.find((j) => j.id === jobId);
+  if (!job) return;
+  const previous = job.status || "saved";
+  if (previous === status) return;
+
+  job.status = status;
+  renderFavorites();
+  refocusStatusSelect(jobId);
+
+  try {
+    const response = await apiFetch("/favorite/status", jsonRequest("POST", { job_id: jobId, status }), {
+      timeout: 15000,
+    });
+    if (!response.ok) {
+      throw new ApiError(await apiError(response, "Durum kaydedilemedi, tekrar dene."));
+    }
+  } catch (err) {
+    job.status = previous;
+    renderFavorites();
+    refocusStatusSelect(jobId);
+    showToast(errorMessage(err, "Durum kaydedilemedi, tekrar dene."), { error: true });
+    return;
+  }
+
+  haptic(12);
+  if (!silent) showToast(`Durum: ${STATUS_LABELS[status]}`);
+}
+
+// Liste yeniden çizilince klavye odağı kaybolmasın.
+function refocusStatusSelect(jobId) {
+  const select = favoritesList.querySelector(`.status-select[data-job-id="${CSS.escape(jobId)}"]`);
+  if (select) select.focus();
+}
+
+favoritesList.addEventListener("change", (e) => {
+  const select = e.target.closest(".status-select");
+  if (select) setFavoriteStatus(select.dataset.jobId, select.value);
+});
+
 // --- Ortak ilan kartı şablonu ---
-function jobCardHtml(job, { index, showScore = true, enterDelay } = {}) {
+function jobCardHtml(job, { index, showScore = true, enterDelay, status } = {}) {
   const isFav = favoriteIds.has(job.id);
   const scoreHtml =
     showScore && typeof job.score === "number"
@@ -611,10 +703,15 @@ function jobCardHtml(job, { index, showScore = true, enterDelay } = {}) {
     index !== undefined
       ? `<button class="cover-letter-btn" data-index="${index}">Ön Yazı Oluştur</button>`
       : "";
+  const statusHtml = status
+    ? `<label class="status-row"><span>Durum</span><select class="status-select" data-job-id="${escapeHtml(job.id)}">${Object.entries(STATUS_LABELS)
+        .map(([key, label]) => `<option value="${key}"${key === status ? " selected" : ""}>${label}</option>`)
+        .join("")}</select></label>`
+    : "";
   const coverLetterOutput = index !== undefined ? `<div class="cover-letter-output" id="cover-letter-${index}"></div>` : "";
 
   return `
-    <div class="job-card${enterDelay !== undefined ? " card-enter" : ""}" data-job-id="${escapeHtml(job.id)}"${enterDelay !== undefined ? ` style="--enter-delay:${enterDelay}ms"` : ""}>
+    <div class="job-card${enterDelay !== undefined ? " card-enter" : ""}" data-job-id="${escapeHtml(job.id)}"${status ? ` data-status="${status}"` : ""}${enterDelay !== undefined ? ` style="--enter-delay:${enterDelay}ms"` : ""}>
       <div class="job-top-row">
         <span class="job-title">${escapeHtml(job.title)}</span>
         <span class="job-tag">${escapeHtml(SOURCE_LABELS[job.source] || job.source)}</span>
@@ -628,6 +725,7 @@ function jobCardHtml(job, { index, showScore = true, enterDelay } = {}) {
         <a href="${escapeHtml(safeUrl(job.url))}" target="_blank" rel="noopener noreferrer" class="job-link">İlana git →</a>
         ${coverLetterBtn}
       </div>
+      ${statusHtml}
       ${coverLetterOutput}
     </div>
   `;
@@ -704,6 +802,71 @@ function renderResults(animateFrom = 0) {
   resultsList.innerHTML = cardsHtml + loadMoreHtml;
 }
 
+// Ön yazıyı seçili ton/uzunluk/dil ayarlarıyla üretir; "Yeniden üret" de aynı yolu kullanır.
+async function generateCoverLetter(index) {
+  const button = resultsList.querySelector(`.cover-letter-btn[data-index="${index}"]`);
+  const outputEl = document.getElementById(`cover-letter-${index}`);
+  const job = lastJobs[index];
+  if (!button || !outputEl || !job) return;
+
+  button.disabled = true;
+  button.classList.add("is-loading");
+  outputEl.innerHTML = "";
+  outputEl.textContent = "Ön yazı oluşturuluyor...";
+
+  try {
+    const response = await apiFetch(
+      "/cover-letter",
+      jsonRequest("POST", {
+        profile_text: document.getElementById("profile-text").value,
+        job_title: job.title,
+        company: job.company,
+        job_description: (job.description || "").slice(0, 25000),
+        tone: document.getElementById("letter-tone").value,
+        length: document.getElementById("letter-length").value,
+        language: document.getElementById("letter-language").value,
+      }),
+      { timeout: 60000, onSlow: () => (outputEl.textContent = "Yapay zekâ ön yazıyı hazırlıyor, biraz sürebilir…") },
+    );
+    if (!response.ok) {
+      throw new ApiError(await apiError(response, "Ön yazı oluşturulamadı. Birkaç saniye sonra tekrar dene."));
+    }
+    const data = await response.json();
+
+    outputEl.innerHTML = "";
+    const textarea = document.createElement("textarea");
+    textarea.className = "cover-letter-edit";
+    textarea.value = data.text;
+    textarea.dataset.original = data.text;
+    textarea.setAttribute("aria-label", "Ön yazı metni, düzenlenebilir");
+
+    const actions = document.createElement("div");
+    actions.className = "cover-letter-actions";
+
+    const downloadBtn = document.createElement("button");
+    downloadBtn.type = "button";
+    downloadBtn.className = "download-pdf-btn";
+    downloadBtn.textContent = "PDF Olarak İndir";
+    downloadBtn.dataset.index = index;
+    downloadBtn.dataset.fileName = data.file_name || "on_yazi";
+
+    const regenBtn = document.createElement("button");
+    regenBtn.type = "button";
+    regenBtn.className = "regenerate-btn";
+    regenBtn.textContent = "Yeniden Üret";
+    regenBtn.dataset.index = index;
+
+    actions.append(downloadBtn, regenBtn);
+    outputEl.append(textarea, actions);
+    haptic(15);
+  } catch (err) {
+    outputEl.textContent = errorMessage(err, "Ön yazı oluşturulamadı. Birkaç saniye sonra tekrar dene.");
+  }
+
+  button.disabled = false;
+  button.classList.remove("is-loading");
+}
+
 // --- "Ön Yazı Oluştur" / "PDF Olarak İndir" / "Daha Fazla Göster" / favori butonları ---
 async function handleListClick(e) {
   const favoriteBtn = e.target.closest(".favorite-btn");
@@ -727,57 +890,27 @@ async function handleListClick(e) {
   }
 
   if (e.target.classList.contains("cover-letter-btn")) {
-    const index = e.target.dataset.index;
-    const job = lastJobs[index];
-    const outputEl = document.getElementById(`cover-letter-${index}`);
-    const profileText = document.getElementById("profile-text").value;
+    generateCoverLetter(e.target.dataset.index);
+    return;
+  }
 
-    e.target.disabled = true;
-    e.target.classList.add("is-loading");
-    outputEl.innerHTML = "";
-    outputEl.textContent = "Ön yazı oluşturuluyor...";
-
-    try {
-      const response = await apiFetch(
-        "/cover-letter",
-        jsonRequest("POST", {
-          profile_text: profileText,
-          job_title: job.title,
-          company: job.company,
-          job_description: (job.description || "").slice(0, 25000),
-        }),
-        { timeout: 60000, onSlow: () => (outputEl.textContent = "Yapay zekâ ön yazıyı hazırlıyor, biraz sürebilir…") },
-      );
-      if (!response.ok) {
-        throw new ApiError(await apiError(response, "Ön yazı oluşturulamadı. Birkaç saniye sonra tekrar dene."));
-      }
-      const data = await response.json();
-
-      outputEl.innerHTML = "";
-      const textarea = document.createElement("textarea");
-      textarea.className = "cover-letter-edit";
-      textarea.value = data.text;
-
-      const downloadBtn = document.createElement("button");
-      downloadBtn.className = "download-pdf-btn";
-      downloadBtn.textContent = "PDF Olarak İndir";
-      downloadBtn.dataset.index = index;
-      downloadBtn.dataset.fileName = data.file_name || "on_yazi";
-
-      outputEl.appendChild(textarea);
-      outputEl.appendChild(downloadBtn);
-      haptic(15);
-    } catch (err) {
-      outputEl.textContent = errorMessage(err, "Ön yazı oluşturulamadı. Birkaç saniye sonra tekrar dene.");
+  if (e.target.classList.contains("regenerate-btn")) {
+    const outputEl = e.target.closest(".cover-letter-output");
+    const textarea = outputEl.querySelector("textarea");
+    if (textarea.value !== textarea.dataset.original) {
+      const ok = await confirmDialog({
+        title: "Ön yazı yeniden üretilsin mi?",
+        message: "Metinde yaptığın düzenlemeler silinir ve yerine yeni bir ön yazı gelir.",
+        okText: "Yeniden üret",
+      });
+      if (!ok) return;
     }
-
-    e.target.disabled = false;
-    e.target.classList.remove("is-loading");
+    generateCoverLetter(e.target.dataset.index);
     return;
   }
 
   if (e.target.classList.contains("download-pdf-btn")) {
-    const textarea = e.target.previousElementSibling;
+    const textarea = e.target.closest(".cover-letter-output").querySelector("textarea");
     const text = textarea.value;
     const job = lastJobs[e.target.dataset.index];
     const fileName = e.target.dataset.fileName || "on_yazi";

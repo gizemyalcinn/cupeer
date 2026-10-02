@@ -2,6 +2,7 @@ import logging
 import mimetypes
 import os
 from datetime import datetime
+from typing import Literal
 from urllib.parse import quote
 
 from dotenv import load_dotenv
@@ -23,10 +24,16 @@ from fpdf.enums import XPos, YPos
 
 from src.pipeline import refresh_jobs
 from src.model.recommender import recommend_jobs
-from src.model.cover_letter import generate_cover_letter, guess_file_name
+from src.model.cover_letter import generate_cover_letter, guess_file_name, Tone, Length, Language
 from src.model.cv_review import review_cv, CVReview
 from google.genai.errors import ServerError
-from src.db.storage import add_favorite, remove_favorite, get_favorite_jobs, get_favorite_ids
+from src.db.storage import (
+    add_favorite,
+    remove_favorite,
+    get_favorite_jobs,
+    get_favorite_ids,
+    set_favorite_status,
+)
 from src.preprocessing.schema import User
 from src.auth.security import get_current_user, can_refresh
 from src.auth.routes import router as auth_router
@@ -111,6 +118,9 @@ class CoverLetterRequest(BaseModel):
     job_title: str = Field(max_length=300)
     company: str | None = Field(None, max_length=300)
     job_description: str = Field("", max_length=30_000)
+    tone: Tone = "balanced"
+    length: Length = "medium"
+    language: Language = "tr"
 
 
 class CoverLetterPdfRequest(BaseModel):
@@ -123,6 +133,14 @@ class CoverLetterPdfRequest(BaseModel):
 class FavoriteRequest(BaseModel):
     job_id: str = Field(min_length=1, max_length=200)
     favorite: bool
+
+
+ApplicationStatus = Literal["saved", "applied", "interview", "offer", "rejected"]
+
+
+class FavoriteStatusRequest(BaseModel):
+    job_id: str = Field(min_length=1, max_length=200)
+    status: ApplicationStatus
 
 
 # Apify kredisi harcayan işlem: yalnızca site sahibi (REFRESH_ALLOWED_EMAILS) + kullanıcı başına ve genel sınır.
@@ -171,6 +189,15 @@ def favorite(req: FavoriteRequest, user: User | None = Depends(get_current_user)
     return {"ok": True}
 
 
+@app.post("/favorite/status", dependencies=[Depends(rate_limit("favorite-status", 120, 60))])
+def favorite_status(req: FavoriteStatusRequest, user: User | None = Depends(get_current_user)):
+    if not user:
+        raise HTTPException(401, "Durum değiştirmek için giriş yapmalısın.")
+    if not set_favorite_status(user.id, req.job_id, req.status):
+        raise HTTPException(404, "Bu ilan favorilerinde değil.")
+    return {"ok": True}
+
+
 @app.get("/favorites")
 def favorites(user: User | None = Depends(get_current_user)):
     if not user:
@@ -186,6 +213,7 @@ def favorites(user: User | None = Depends(get_current_user)):
             "url": job.url,
             "source": job.source,
             "is_favorite": job.is_favorite,
+            "status": job.favorite_status or "saved",
         }
         for job in jobs
     ]
@@ -195,7 +223,13 @@ def favorites(user: User | None = Depends(get_current_user)):
 def cover_letter(req: CoverLetterRequest):
     try:
         text = generate_cover_letter(
-            req.profile_text, req.job_title, req.company, req.job_description
+            req.profile_text,
+            req.job_title,
+            req.company,
+            req.job_description,
+            req.tone,
+            req.length,
+            req.language,
         )
     except ServerError:
         raise HTTPException(503, "Ön yazı servisi şu an yoğun, lütfen biraz sonra tekrar dene.")

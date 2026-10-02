@@ -18,6 +18,7 @@ class Job(BaseModel):
     posted_date: str | None = None
     scraped_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
     is_favorite: bool = False  # kalıcı değil, kullanıcıya göre her istekte hesaplanır
+    favorite_status: str | None = None  # başvuru durumu; yalnızca favori listesinde dolu
 
 
 class User(BaseModel):

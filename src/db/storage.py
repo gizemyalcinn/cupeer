@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS favorites (
     created_at TEXT,
     PRIMARY KEY (user_id, job_id)
 );
+ALTER TABLE favorites ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'saved';
 
 CREATE TABLE IF NOT EXISTS login_attempts (
     email TEXT NOT NULL,
@@ -231,6 +232,20 @@ def remove_favorite(user_id: str, job_id: str) -> None:
     conn.close()
 
 
+def set_favorite_status(user_id: str, job_id: str, status: str) -> bool:
+    """Favorinin başvuru durumunu günceller; kullanıcının böyle bir favorisi yoksa False döner."""
+    conn = _connect()
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE favorites SET status = %s WHERE user_id = %s AND job_id = %s",
+            (status, user_id, job_id),
+        )
+        updated = cur.rowcount > 0
+    conn.commit()
+    conn.close()
+    return updated
+
+
 def get_favorite_ids(user_id: str) -> set[str]:
     conn = _connect()
     with conn.cursor() as cur:
@@ -245,16 +260,19 @@ def get_favorite_jobs(user_id: str) -> list[Job]:
     with conn.cursor() as cur:
         cur.execute(
             "SELECT j.id, j.source, j.title, j.company, j.location, j.country, j.description, j.url, "
-            "j.remote, j.employment_type, j.salary, j.posted_date, j.scraped_at, j.is_expired "
+            "j.remote, j.employment_type, j.salary, j.posted_date, j.scraped_at, j.is_expired, f.status "
             "FROM favorites f JOIN jobs j ON f.job_id = j.id "
             "WHERE f.user_id = %s ORDER BY f.created_at DESC",
             (user_id,),
         )
         rows = cur.fetchall()
     conn.close()
-    jobs = [_row_to_job(row) for row in rows]
-    for job in jobs:
+    jobs = []
+    for row in rows:
+        job = _row_to_job(row[:14])
         job.is_favorite = True
+        job.favorite_status = row[14]
+        jobs.append(job)
     return jobs
 
 
